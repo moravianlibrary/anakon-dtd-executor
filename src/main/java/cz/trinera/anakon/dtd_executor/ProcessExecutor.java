@@ -12,6 +12,7 @@ public class ProcessExecutor {
 
     private static final int MAX_CONCURRENT_PROCESSES = 5;
     private static final int POLL_INTERVAL_SECONDS = 5;
+    private static final boolean SILENT_MODE = true; // Set to true to suppress console output
 
     private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_PROCESSES);
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();
@@ -21,6 +22,7 @@ public class ProcessExecutor {
     }
 
     public void start() throws Exception {
+        System.out.println("Starting Anakon DTD Executor...");
         while (true) {
             try (Connection conn = getConnection()) {
                 checkForNewProcesses(conn);
@@ -30,13 +32,19 @@ public class ProcessExecutor {
         }
     }
 
+    private void log(String message) {
+        if (!SILENT_MODE) {
+            System.out.println(message);
+        }
+    }
+
     private void checkForNewProcesses(Connection conn) throws SQLException {
-        System.out.println("Checking for new processes...");
+        log("Checking for new processes...");
         int runningCount = runningProcesses.size();
         int slotsAvailable = MAX_CONCURRENT_PROCESSES - runningCount;
-        System.out.println("Currently running: " + runningCount + " / " + MAX_CONCURRENT_PROCESSES);
+        log("Currently running: " + runningCount + " / " + MAX_CONCURRENT_PROCESSES);
         if (slotsAvailable <= 0) {
-            System.out.println("Max running processes reached. Skipping.");
+            log("Max running processes reached. Skipping.");
             return;
         }
 
@@ -88,7 +96,7 @@ public class ProcessExecutor {
     }
 
     private void checkForKillRequests(Connection conn) throws SQLException {
-        System.out.println("Checking for kill requests...");
+        log("Checking for kill requests...");
         String sql = "SELECT dtd_id FROM dtd_kill_request";
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {

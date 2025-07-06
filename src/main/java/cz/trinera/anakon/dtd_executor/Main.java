@@ -39,8 +39,8 @@ public class Main {
     }
 
     public static void run() throws Exception {
-        System.out.println("Running AnakOn DTD Executor...");
-        Config config = Config.instanceOf();
+        //System.out.println("Running AnakOn DTD Executor...");
+        //Config config = Config.instanceOf();
         //System.out.println(config);
         new ProcessExecutor().start();
     }
