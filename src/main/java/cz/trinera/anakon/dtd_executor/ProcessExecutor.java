@@ -32,16 +32,26 @@ public class ProcessExecutor {
 
     private void checkForNewProcesses(Connection conn) throws SQLException {
         System.out.println("Checking for new processes...");
-        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' FOR UPDATE SKIP LOCKED";
-        try (PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                UUID id = UUID.fromString(rs.getString("id"));
-                String type = rs.getString("type");
-                String params = rs.getString("input_data");
+        int runningCount = runningProcesses.size();
+        int slotsAvailable = MAX_CONCURRENT_PROCESSES - runningCount;
+        System.out.println("Currently running: " + runningCount + " / " + MAX_CONCURRENT_PROCESSES);
+        if (slotsAvailable <= 0) {
+            System.out.println("Max running processes reached. Skipping.");
+            return;
+        }
 
-                updateStatus(conn, id, "RUNNING", Timestamp.from(Instant.now()));
-                launchProcess(id, type, params);
+        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, slotsAvailable);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    UUID id = UUID.fromString(rs.getString("id"));
+                    String type = rs.getString("type");
+                    String params = rs.getString("input_data");
+
+                    updateStatus(conn, id, "RUNNING", Timestamp.from(Instant.now()));
+                    launchProcess(id, type, params);
+                }
             }
         }
     }
