@@ -24,7 +24,7 @@ public class ProcessExecutor {
         while (true) {
             try (Connection conn = getConnection()) {
                 checkForNewProcesses(conn);
-                //checkForKillRequests(conn); //TODO: test
+                checkForKillRequests(conn);
             }
             Thread.sleep(POLL_INTERVAL_SECONDS * 1000L);
         }
@@ -79,6 +79,10 @@ public class ProcessExecutor {
                 }
                 writer.write("Process " + id + " finished\n");
                 updateFinalStatus(id, "COMPLETE");
+            } catch (InterruptedException e) {
+                System.out.println("Process " + id + " was interrupted");
+                updateFinalStatus(id, "CANCELED");
+                Thread.currentThread().interrupt(); // zachovej flag
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("Process " + id + " failed: " + e.getMessage());
@@ -94,13 +98,14 @@ public class ProcessExecutor {
 
     private void checkForKillRequests(Connection conn) throws SQLException {
         System.out.println("Checking for kill requests...");
-        String sql = "SELECT process_id FROM kill_request";
+        String sql = "SELECT dtd_id FROM dtd_kill_request";
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 UUID processId = UUID.fromString(rs.getString("dtd_id"));
                 ProcessWrapper pw = runningProcesses.get(processId);
                 if (pw != null) {
+                    System.out.println("Cancelling process: " + processId);
                     pw.cancelRequested.set(true);
                     pw.future.cancel(true);
                     deleteKillRequest(conn, processId);
@@ -110,7 +115,7 @@ public class ProcessExecutor {
     }
 
     private void deleteKillRequest(Connection conn, UUID processId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM kill_request WHERE process_id = ?")) {
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM dtd_kill_request WHERE dtd_id = ?")) {
             ps.setObject(1, processId);
             ps.executeUpdate();
         }
