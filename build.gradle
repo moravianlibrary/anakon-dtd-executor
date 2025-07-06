@@ -16,6 +16,8 @@ dependencies {
 
     //cli
     implementation 'commons-cli:commons-cli:1.4'
+    //postgresql
+    implementation 'org.postgresql:postgresql:42.7.3'
 }
 
 test {

@@ -9,7 +9,7 @@ public class Main {
 
     private static final String OPT_CONFIG_FILE = "config_file";
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
 
         Options options = new Options();
 
@@ -38,10 +38,10 @@ public class Main {
         run();
     }
 
-    public static void run() {
+    public static void run() throws Exception {
         System.out.println("Running AnakOn DTD Executor...");
         Config config = Config.instanceOf();
-        //System.out.println("jobs directory: " + config.getJobsDir());
-        System.out.println(config);
+        //System.out.println(config);
+        new ProcessExecutor().start();
     }
 }
