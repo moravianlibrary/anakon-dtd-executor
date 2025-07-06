@@ -48,7 +48,7 @@ public class ProcessExecutor {
             return;
         }
 
-        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created DESC FOR UPDATE SKIP LOCKED LIMIT ?";
+        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, slotsAvailable);
             try (ResultSet rs = ps.executeQuery()) {
