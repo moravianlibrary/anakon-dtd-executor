@@ -40,7 +40,7 @@ public class ProcessExecutor {
             return;
         }
 
-        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
+        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created DESC FOR UPDATE SKIP LOCKED LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, slotsAvailable);
             try (ResultSet rs = ps.executeQuery()) {
@@ -58,34 +58,25 @@ public class ProcessExecutor {
 
     private void launchProcess(UUID id, String type, String params) {
         System.out.println("Launching process: " + id + ", type: " + type);
-        Path jobsDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
-        File jobDir = jobsDir.toFile();
-        jobDir.mkdirs(); // Ensure the job directory exists
-        Path outputPath = Paths.get(jobDir.getAbsolutePath(), "output.log");
+        Path jobDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
+        jobDir.toFile().mkdirs(); // Ensure the job directory exists
+        Path outputPath = jobDir.resolve("output.log");
         AtomicBoolean cancelRequested = new AtomicBoolean(false);
 
         Runnable task = () -> {
-            try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
-                writer.write("Process " + id + " started\n");
-                for (int i = 0; i < 30; i++) {
-                    if (cancelRequested.get()) {
-                        writer.write("Process " + id + " cancelled\n");
-                        updateFinalStatus(id, "CANCELED");
-                        return;
-                    }
-                    writer.write("Tick " + i + "\n");
-                    writer.flush();
-                    Thread.sleep(1000);
+            try {
+                DtdProcess process = ProcessFactory.create(type);
+                process.run(id, type, params, outputPath, cancelRequested);
+                if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
+                    updateFinalStatus(id, "CANCELED");
+                } else {
+                    updateFinalStatus(id, "COMPLETE");
                 }
-                writer.write("Process " + id + " finished\n");
-                updateFinalStatus(id, "COMPLETE");
             } catch (InterruptedException e) {
-                System.out.println("Process " + id + " was interrupted");
+                Thread.currentThread().interrupt();
                 updateFinalStatus(id, "CANCELED");
-                Thread.currentThread().interrupt(); // zachovej flag
             } catch (Exception e) {
                 e.printStackTrace();
-                System.out.println("Process " + id + " failed: " + e.getMessage());
                 updateFinalStatus(id, "FAILED");
             } finally {
                 runningProcesses.remove(id);
