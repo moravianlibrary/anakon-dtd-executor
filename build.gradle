@@ -1,0 +1,55 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'cz.trinera.anakon'
+version = '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    //cli
+    implementation 'commons-cli:commons-cli:1.4'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClass = 'cz.trinera.anakon.dtd_executor.Main'
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': application.mainClass
+        )
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // Exclude test resources
+    exclude('local/**') //src/main/resources/local/** is excluded
+}
+
+/*
+Build & run:
+1.
+
+ ./gradlew clean build -x test
+
+2.
+
+ java -jar build/libs/anakon-dtd-executor-VERZE.jar \
+ --config_file /Users/martinrehanek/TrineraProjects/KomplexniValidator/anakon-dtd-executor/src/main/resources/local/config.properties
+
+ */
