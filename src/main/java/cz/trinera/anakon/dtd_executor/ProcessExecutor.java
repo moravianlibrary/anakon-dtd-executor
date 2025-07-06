@@ -1,6 +1,5 @@
 package cz.trinera.anakon.dtd_executor;
 
-import java.io.*;
 import java.nio.file.*;
 import java.sql.*;
 import java.time.*;
@@ -10,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProcessExecutor {
 
+    //TODO: move all these to a config file
     private static final int MAX_CONCURRENT_PROCESSES = 5;
     private static final int POLL_INTERVAL_SECONDS = 5;
     private static final boolean SILENT_MODE = true; // Set to true to suppress console output
@@ -147,8 +147,9 @@ public class ProcessExecutor {
     private Connection getConnection() throws SQLException {
         Config config = Config.instanceOf();
         String url = "jdbc:postgresql://" + config.getDbHost() + ":" + config.getDbPort() + "/" + config.getDbDatabase();
-        //System.out.println("Connecting to database: " + url);
-        return DriverManager.getConnection(url, config.getDbUser(), config.getDbHost());
+        log("Connecting to database: " + url);
+        //System.out.println("Using user: " + config.getDbUser() + " and password: " + config.getDbPassword());
+        return DriverManager.getConnection(url, config.getDbUser(), config.getDbPassword());
     }
 
     private static class ProcessWrapper {
