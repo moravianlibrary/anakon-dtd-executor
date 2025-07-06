@@ -18,6 +18,8 @@ dependencies {
     implementation 'commons-cli:commons-cli:1.4'
     //postgresql
     implementation 'org.postgresql:postgresql:42.7.3'
+    //json parser
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
 }
 
 test {

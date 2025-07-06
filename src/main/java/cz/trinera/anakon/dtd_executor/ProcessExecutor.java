@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProcessExecutor {
 
-    private static final int MAX_CONCURRENT_PROCESSES = 2;
+    private static final int MAX_CONCURRENT_PROCESSES = 5;
     private static final int POLL_INTERVAL_SECONDS = 5;
 
     private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_PROCESSES);
