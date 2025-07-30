@@ -48,7 +48,7 @@ public class ProcessExecutor {
             return;
         }
 
-        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
+        String sql = "SELECT id, type, input_data FROM dtd WHERE state = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, slotsAvailable);
             try (ResultSet rs = ps.executeQuery()) {
@@ -57,7 +57,7 @@ public class ProcessExecutor {
                     String type = rs.getString("type");
                     String params = rs.getString("input_data");
 
-                    updateStatus(conn, id, DtdProcess.State.RUNNING, Timestamp.from(Instant.now()));
+                    updateProcessState(conn, id, DtdProcess.State.RUNNING, Timestamp.from(Instant.now()));
                     launchProcess(id, type, params);
                 }
             }
@@ -76,16 +76,16 @@ public class ProcessExecutor {
                 DtdProcess process = ProcessFactory.create(type);
                 process.run(id, type, params, outputPath, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
-                    updateFinalStatus(id, DtdProcess.State.CANCELED);
+                    updateFinalProcessState(id, DtdProcess.State.CANCELED);
                 } else {
-                    updateFinalStatus(id, DtdProcess.State.COMPLETED);
+                    updateFinalProcessState(id, DtdProcess.State.COMPLETED);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                updateFinalStatus(id, DtdProcess.State.CANCELED);
+                updateFinalProcessState(id, DtdProcess.State.CANCELED);
             } catch (Exception e) {
                 e.printStackTrace();
-                updateFinalStatus(id, DtdProcess.State.FAILED);
+                updateFinalProcessState(id, DtdProcess.State.FAILED);
             } finally {
                 runningProcesses.remove(id);
             }
@@ -120,8 +120,8 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateStatus(Connection conn, UUID id, DtdProcess.State state, Timestamp startedAt) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, started = ?, last_modified = ? WHERE id = ?")) {
+    private void updateProcessState(Connection conn, UUID id, DtdProcess.State state, Timestamp startedAt) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, started = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, startedAt);
             ps.setTimestamp(3, startedAt);
@@ -130,10 +130,10 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateFinalStatus(UUID id, DtdProcess.State state) {
+    private void updateFinalProcessState(UUID id, DtdProcess.State state) {
         Timestamp now = Timestamp.from(Instant.now());
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, finished = ?, last_modified = ? WHERE id = ?")) {
+             PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, finished = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, now);
             ps.setTimestamp(3, now);
