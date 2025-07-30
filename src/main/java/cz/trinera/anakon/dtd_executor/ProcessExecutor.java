@@ -57,7 +57,7 @@ public class ProcessExecutor {
                     String type = rs.getString("type");
                     String params = rs.getString("input_data");
 
-                    updateProcessState(conn, id, DtdProcess.State.RUNNING, Timestamp.from(Instant.now()));
+                    updateProcessState(conn, id, Process.State.RUNNING, Timestamp.from(Instant.now()));
                     launchProcess(id, type, params);
                 }
             }
@@ -73,19 +73,19 @@ public class ProcessExecutor {
 
         Runnable task = () -> {
             try {
-                DtdProcess process = ProcessFactory.create(type);
+                Process process = ProcessFactory.create(type);
                 process.run(id, type, params, outputPath, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
-                    updateFinalProcessState(id, DtdProcess.State.CANCELED);
+                    updateFinalProcessState(id, Process.State.CANCELED);
                 } else {
-                    updateFinalProcessState(id, DtdProcess.State.COMPLETED);
+                    updateFinalProcessState(id, Process.State.COMPLETED);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                updateFinalProcessState(id, DtdProcess.State.CANCELED);
+                updateFinalProcessState(id, Process.State.CANCELED);
             } catch (Exception e) {
                 e.printStackTrace();
-                updateFinalProcessState(id, DtdProcess.State.FAILED);
+                updateFinalProcessState(id, Process.State.FAILED);
             } finally {
                 runningProcesses.remove(id);
             }
@@ -120,7 +120,7 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateProcessState(Connection conn, UUID id, DtdProcess.State state, Timestamp startedAt) throws SQLException {
+    private void updateProcessState(Connection conn, UUID id, Process.State state, Timestamp startedAt) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, started = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, startedAt);
@@ -130,7 +130,7 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateFinalProcessState(UUID id, DtdProcess.State state) {
+    private void updateFinalProcessState(UUID id, Process.State state) {
         Timestamp now = Timestamp.from(Instant.now());
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, finished = ?, last_modified = ? WHERE id = ?")) {

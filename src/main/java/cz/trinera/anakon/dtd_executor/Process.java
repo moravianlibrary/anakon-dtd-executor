@@ -4,11 +4,14 @@ import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public interface DtdProcess {
+/**
+ * Interface for a DTD process that can be executed by the executor.
+ */
+public interface Process {
 
     void run(UUID id, String type, String inputData, Path outputPath, AtomicBoolean cancelRequested) throws Exception;
 
-    public static enum State {
+    enum State {
         CREATED, //never set to this by executor, only by anakon_backend
         RUNNING,
         COMPLETED,

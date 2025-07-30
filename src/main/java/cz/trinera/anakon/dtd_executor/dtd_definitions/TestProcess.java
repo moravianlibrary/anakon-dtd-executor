@@ -1,6 +1,6 @@
 package cz.trinera.anakon.dtd_executor.dtd_definitions;
 
-import cz.trinera.anakon.dtd_executor.DtdProcess;
+import cz.trinera.anakon.dtd_executor.Process;
 
 import java.io.BufferedWriter;
 import java.nio.file.Files;
@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class TestProcess implements DtdProcess {
+public class TestProcess implements Process {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
