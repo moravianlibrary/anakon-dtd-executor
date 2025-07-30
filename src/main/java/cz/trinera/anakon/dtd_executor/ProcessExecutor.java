@@ -57,7 +57,7 @@ public class ProcessExecutor {
                     String type = rs.getString("type");
                     String params = rs.getString("input_data");
 
-                    updateStatus(conn, id, "RUNNING", Timestamp.from(Instant.now()));
+                    updateStatus(conn, id, DtdProcess.State.RUNNING, Timestamp.from(Instant.now()));
                     launchProcess(id, type, params);
                 }
             }
@@ -76,16 +76,16 @@ public class ProcessExecutor {
                 DtdProcess process = ProcessFactory.create(type);
                 process.run(id, type, params, outputPath, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
-                    updateFinalStatus(id, "CANCELED");
+                    updateFinalStatus(id, DtdProcess.State.CANCELED);
                 } else {
-                    updateFinalStatus(id, "COMPLETE");
+                    updateFinalStatus(id, DtdProcess.State.COMPLETED);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                updateFinalStatus(id, "CANCELED");
+                updateFinalStatus(id, DtdProcess.State.CANCELED);
             } catch (Exception e) {
                 e.printStackTrace();
-                updateFinalStatus(id, "FAILED");
+                updateFinalStatus(id, DtdProcess.State.FAILED);
             } finally {
                 runningProcesses.remove(id);
             }
@@ -120,9 +120,9 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateStatus(Connection conn, UUID id, String status, Timestamp startedAt) throws SQLException {
+    private void updateStatus(Connection conn, UUID id, DtdProcess.State state, Timestamp startedAt) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, started = ?, last_modified = ? WHERE id = ?")) {
-            ps.setString(1, status);
+            ps.setString(1, state.name());
             ps.setTimestamp(2, startedAt);
             ps.setTimestamp(3, startedAt);
             ps.setObject(4, id);
@@ -130,11 +130,11 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateFinalStatus(UUID id, String status) {
+    private void updateFinalStatus(UUID id, DtdProcess.State state) {
         Timestamp now = Timestamp.from(Instant.now());
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, finished = ?, last_modified = ? WHERE id = ?")) {
-            ps.setString(1, status);
+            ps.setString(1, state.name());
             ps.setTimestamp(2, now);
             ps.setTimestamp(3, now);
             ps.setObject(4, id);
