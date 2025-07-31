@@ -9,10 +9,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProcessExecutor {
 
-    //TODO: move all these to a config file
     private static final int MAX_CONCURRENT_PROCESSES = 5; //TODO: load from dynamic config
     private static final int POLL_INTERVAL_SECONDS = 5; //TODO: load from dynamic config
-    private static final boolean SILENT_MODE = true; // Set to true to suppress console output //TODO: load from dynamic config (log_level)
+    private static final boolean SILENT_MODE = false; // Set to true to suppress console output //TODO: load from dynamic config (log_level)
 
     private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_PROCESSES);
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();
@@ -25,11 +24,18 @@ public class ProcessExecutor {
         System.out.println("Starting Anakon DTD Executor...");
         while (true) {
             try (Connection conn = getConnection()) {
+                loadDynamicConfiguration();
                 checkForNewProcesses(conn);
                 checkForKillRequests(conn);
             }
             Thread.sleep(POLL_INTERVAL_SECONDS * 1000L);
         }
+    }
+
+    private void loadDynamicConfiguration() {
+        String dynamicConfigFile = Config.instanceOf().getDynamicConfigFile();
+        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile + " (not implemented yet)");
+        // TODO: actually load, update MAX_CONCURRENT_PROCESSES, POLL_INTERVAL_SECONDS, and SILENT_MODE, and process registry
     }
 
     private void log(String message) {
