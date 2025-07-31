@@ -1,13 +1,19 @@
-config:
+executor_config:
   min_supported_executor_version: 2 # Minimum version of the executor that should be running
                                     # Each executor with lower versions will finish running current processes and not schedule any new ones.
                                     # And it will finish its main loop after the last process finishes.
   max_concurrent_processes: 5 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
+  process_definition_directory: /path/to/process/definitions # Directory where process definitions are stored.
+                                                             # Convention for process definition files is:
+                                                             #    file <process_type>.jar          - JAR file containing compiled Java class (named from class_name) and helper classes.
+                                                             #    file <process_type>.properties   - Properties file that will be provided to the process as input.
+                                                             #                                       Typically used for api urls, access tokens, etc.
 
 processes:
   - type: test
+    class_name: com.example.TestProcess
     description: Process for testing process execution and input/output handling.
     inputs:
       - name: max_duration
@@ -20,6 +26,7 @@ processes:
     outputs:
 
   - type: test_export_csv
+    class_name: com.example.TestExportCSV
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
       - name: start_date
@@ -33,6 +40,7 @@ processes:
         mime_type: text/csv
 
   - type: test_generate_report_json
+    class_name: cz.someCompany.TestGenerateReportJSON
     description: Generates a report about a periodical/monograph/etc JSON format based on the provided object PID in Kramerius.
     inputs:
       - name: kramerius_base_url
@@ -48,6 +56,7 @@ processes:
         mime_type: application/json
 
   - type: transform_data
+    class_name: cz.mzk.anakon.dtd.transform.TransformData
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
       - name: input_file_json
@@ -62,6 +71,7 @@ processes:
         mime_type: application/json
 
   - type: aggregate_metrics
+    class_name: cz.mzk.anakon.dtd.metrics.AggregateMetrics
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
       - name: metrics
