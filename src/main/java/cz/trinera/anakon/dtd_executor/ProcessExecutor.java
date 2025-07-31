@@ -10,9 +10,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ProcessExecutor {
 
     //TODO: move all these to a config file
-    private static final int MAX_CONCURRENT_PROCESSES = 5;
-    private static final int POLL_INTERVAL_SECONDS = 5;
-    private static final boolean SILENT_MODE = true; // Set to true to suppress console output
+    private static final int MAX_CONCURRENT_PROCESSES = 5; //TODO: load from dynamic config
+    private static final int POLL_INTERVAL_SECONDS = 5; //TODO: load from dynamic config
+    private static final boolean SILENT_MODE = true; // Set to true to suppress console output //TODO: load from dynamic config (log_level)
 
     private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_PROCESSES);
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();

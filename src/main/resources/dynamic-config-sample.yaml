@@ -1,0 +1,76 @@
+config:
+  min_supported_executor_version: 2 # Minimum version of the executor that should be running
+                                    # Each executor with lower versions will finish running current processes and not schedule any new ones.
+                                    # And it will finish its main loop after the last process finishes.
+  max_concurrent_processes: 5 # Maximum number of processes that can run concurrently on this executor.
+  polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
+  log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
+
+processes:
+  - type: test
+    description: Process for testing process execution and input/output handling.
+    inputs:
+      - name: max_duration
+        type: integer
+        description: Maximum duration in seconds for the process to run. If not set runs indefinitely or until cancelled.
+      - name: failure_strategy
+        type: enum
+        options: [ can, will ]
+        description: If set to "can", the process may or may not fail. If set to "will", the process will always fail unless it was cancelled before being able to fail.
+    outputs:
+
+  - type: test_export_csv
+    description: Test process without any specific functionality, just to illustrate data types and outputs.
+    inputs:
+      - name: start_date
+        type: date
+      - name: end_date
+        type: date
+      - name: include_headers
+        type: boolean
+    outputs:
+      - file: export.csv
+        mime_type: text/csv
+
+  - type: test_generate_report_json
+    description: Generates a report about a periodical/monograph/etc JSON format based on the provided object PID in Kramerius.
+    inputs:
+      - name: kramerius_base_url
+        type: string
+        description: The base URL of the Kramerius instance.
+        mandatory: true
+      - name: object_pid
+        type: string
+        mandatory: true
+        description: The PID of the object in Kramerius to generate the report for.
+    outputs:
+      - file: report.json
+        mime_type: application/json
+
+  - type: transform_data
+    description: Test process without any specific functionality, just to illustrate data types and outputs.
+    inputs:
+      - name: input_file_json
+        type: file
+        mandatory: true
+      - name: transformation_type
+        type: enum
+        options: [normalize, anonymize, enrich]
+        default: normalize
+    outputs:
+      - file: transformed_output.json
+        mime_type: application/json
+
+  - type: aggregate_metrics
+    description: Test process without any specific functionality, just to illustrate data types and outputs.
+    inputs:
+      - name: metrics
+        type: list[string]
+        mandatory: true
+      - name: time_window
+        type: string
+    outputs:
+      - file: summary.csv
+        mime_type: text/csv
+      - file: metadata.json
+        mime_type: application/json
