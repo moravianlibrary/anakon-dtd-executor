@@ -9,9 +9,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProcessExecutor {
 
-    private static final int MAX_CONCURRENT_PROCESSES = 5; //TODO: load from dynamic config
-    private static final int POLL_INTERVAL_SECONDS = 5; //TODO: load from dynamic config
+    private static final int MAX_CONCURRENT_PROCESSES = 10; //TODO: load from dynamic config
+    private static final int POLL_INTERVAL_SECONDS = 2; //TODO: load from dynamic config
     private static final boolean SILENT_MODE = false; // Set to true to suppress console output //TODO: load from dynamic config (log_level)
+    private static final boolean ENABLE_RANDOM_TERMINATION = false; // For testing purposes, randomly terminate the executor
 
     private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_PROCESSES);
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();
@@ -28,7 +29,26 @@ public class ProcessExecutor {
                 checkForNewProcesses(conn);
                 checkForKillRequests(conn);
             }
+            // Check if we should randomly terminate the executor for testing purposes (later make decision to terminate based on dynamic config and executor version)
+            if (ENABLE_RANDOM_TERMINATION && shouldRandomlyTerminate()) {
+                executor.shutdown();
+                break; // Exit the loop if the executor is terminated
+            }
+            System.out.println();
             Thread.sleep(POLL_INTERVAL_SECONDS * 1000L);
+        }
+    }
+
+    private boolean shouldRandomlyTerminate() {
+        //randomly terminate the executor for testing purposes
+        int randomValue = new Random().nextInt(6) + 1; // Random value between 1 and 6
+        System.out.println("Rolling the dice... And it's " + randomValue);
+        if (randomValue == 6) {
+            System.out.println("I got 6! Terminating execution.");
+            return true; // Terminate the executor
+        } else {
+            System.out.println("That's not a 6, continuing execution.");
+            return false;
         }
     }
 
