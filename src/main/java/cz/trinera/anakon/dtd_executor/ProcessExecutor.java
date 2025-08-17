@@ -14,6 +14,7 @@ import static cz.trinera.anakon.dtd_executor.DynamicConfig.LogLevel.*;
 
 public class ProcessExecutor {
 
+    private int minSupportedExecutorVersion;
     private int maxConcurrentProcesses;
     private int pollIntervalSeconds;
     private boolean silentMode; // Set to true to suppress console output
@@ -30,11 +31,20 @@ public class ProcessExecutor {
         while (true) {
             loadDynamicConfiguration();
             try (Connection conn = getConnection()) {
-                checkForNewProcesses(conn);
+                if (!runningOutdatedVersion()) {
+                    checkForNewProcesses(conn);
+                }
                 checkForKillRequests(conn);
+            }
+            if (runningOutdatedVersion() && runningProcesses.isEmpty()) {
+                return;
             }
             Thread.sleep(pollIntervalSeconds * 1000L);
         }
+    }
+
+    private boolean runningOutdatedVersion() {
+        return Config.EXECUTOR_VERSION < minSupportedExecutorVersion;
     }
 
     private void loadDynamicConfiguration() throws IOException {
@@ -42,6 +52,7 @@ public class ProcessExecutor {
         DynamicConfig dynamicConfig = DynamicConfig.create(new File(dynamicConfigFile));
         DynamicConfig.ExecutorConfig executorConfig = dynamicConfig.getExecutorConfig();
 
+        minSupportedExecutorVersion = executorConfig.getMinSupportedExecutorVersion();
         maxConcurrentProcesses = executorConfig.getMaxConcurrentProcesses();
         pollIntervalSeconds = executorConfig.getPollingInterval();
         silentMode = List.of(WARNING, ERROR, CRITICAL).contains(executorConfig.getLogLevel());
@@ -52,6 +63,7 @@ public class ProcessExecutor {
         }
 
         System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile);
+        System.out.println("Loaded minSupportedExecutorVersion: " + minSupportedExecutorVersion);
         System.out.println("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
         System.out.println("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
         System.out.println("Loaded silentMode: " + silentMode);
