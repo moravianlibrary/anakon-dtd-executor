@@ -1,5 +1,8 @@
 package cz.trinera.anakon.dtd_executor;
 
+
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.*;
 import java.sql.*;
 import java.time.*;
@@ -7,13 +10,15 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static cz.trinera.anakon.dtd_executor.DynamicConfig.LogLevel.*;
+
 public class ProcessExecutor {
 
-    private static final int MAX_CONCURRENT_PROCESSES = 5; //TODO: load from dynamic config
-    private static final int POLL_INTERVAL_SECONDS = 5; //TODO: load from dynamic config
-    private static final boolean SILENT_MODE = false; // Set to true to suppress console output //TODO: load from dynamic config (log_level)
+    private int maxConcurrentProcesses;
+    private int pollIntervalSeconds;
+    private boolean silentMode; // Set to true to suppress console output
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_PROCESSES);
+    private ExecutorService executor;
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws Exception {
@@ -23,23 +28,38 @@ public class ProcessExecutor {
     public void start() throws Exception {
         System.out.println("Starting Anakon DTD Executor...");
         while (true) {
+            loadDynamicConfiguration();
             try (Connection conn = getConnection()) {
-                loadDynamicConfiguration();
                 checkForNewProcesses(conn);
                 checkForKillRequests(conn);
             }
-            Thread.sleep(POLL_INTERVAL_SECONDS * 1000L);
+            Thread.sleep(pollIntervalSeconds * 1000L);
         }
     }
 
-    private void loadDynamicConfiguration() {
+    private void loadDynamicConfiguration() throws IOException {
         String dynamicConfigFile = Config.instanceOf().getDynamicConfigFile();
-        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile + " (not implemented yet)");
-        // TODO: actually load, update MAX_CONCURRENT_PROCESSES, POLL_INTERVAL_SECONDS, and SILENT_MODE, and process registry
+        DynamicConfig dynamicConfig = DynamicConfig.create(new File(dynamicConfigFile));
+        DynamicConfig.ExecutorConfig executorConfig = dynamicConfig.getExecutorConfig();
+
+        maxConcurrentProcesses = executorConfig.getMaxConcurrentProcesses();
+        pollIntervalSeconds = executorConfig.getPollingInterval();
+        silentMode = List.of(WARNING, ERROR, CRITICAL).contains(executorConfig.getLogLevel());
+
+        if (executor == null) {
+            //TODO: make executor change thread pool dynamically
+            executor = Executors.newFixedThreadPool(maxConcurrentProcesses);
+        }
+
+        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile);
+        System.out.println("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
+        System.out.println("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
+        System.out.println("Loaded silentMode: " + silentMode);
+
     }
 
     private void log(String message) {
-        if (!SILENT_MODE) {
+        if (!silentMode) {
             System.out.println(message);
         }
     }
@@ -47,14 +67,14 @@ public class ProcessExecutor {
     private void checkForNewProcesses(Connection conn) throws SQLException {
         log("Checking for new processes...");
         int runningCount = runningProcesses.size();
-        int slotsAvailable = MAX_CONCURRENT_PROCESSES - runningCount;
-        log("Currently running: " + runningCount + " / " + MAX_CONCURRENT_PROCESSES);
+        int slotsAvailable = maxConcurrentProcesses - runningCount;
+        log("Currently running: " + runningCount + " / " + maxConcurrentProcesses);
         if (slotsAvailable <= 0) {
             log("Max running processes reached. Skipping.");
             return;
         }
 
-        String sql = "SELECT id, type, input_data FROM dtd WHERE state = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
+        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, slotsAvailable);
             try (ResultSet rs = ps.executeQuery()) {
@@ -127,7 +147,7 @@ public class ProcessExecutor {
     }
 
     private void updateProcessState(Connection conn, UUID id, Process.State state, Timestamp startedAt) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, started = ?, last_modified = ? WHERE id = ?")) {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, started = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, startedAt);
             ps.setTimestamp(3, startedAt);
@@ -139,7 +159,7 @@ public class ProcessExecutor {
     private void updateFinalProcessState(UUID id, Process.State state) {
         Timestamp now = Timestamp.from(Instant.now());
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, finished = ?, last_modified = ? WHERE id = ?")) {
+             PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, finished = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, now);
             ps.setTimestamp(3, now);
