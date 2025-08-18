@@ -36,10 +36,21 @@ public class ProcessExecutor {
                 }
                 checkForKillRequests(conn);
             }
-            if (runningOutdatedVersion() && runningProcesses.isEmpty()) {
-                return;
+            //check if executor is not outdated
+            boolean runningOutdatedVersion = Config.EXECUTOR_VERSION < minSupportedExecutorVersion;
+            if (runningOutdatedVersion) {
+                System.out.println("Executor is running an outdated version (" + Config.EXECUTOR_VERSION + "), which is lower than the minimum supported version (" + minSupportedExecutorVersion + ").");
+                //System.out.println("Minimum supported executor version is: " + minSupportedExecutorVersion);
+                if (runningProcesses.isEmpty()) {
+                    System.out.println("No processes are currently running. Exiting this outdated executor.");
+                    return;
+                } else {
+                    System.out.println("There are still some running processes. Continuing to run this outdated executor.");
+                }
             }
+            //wait for the next poll interval
             Thread.sleep(pollIntervalSeconds * 1000L);
+            System.out.println();
         }
     }
 
