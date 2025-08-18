@@ -1,5 +1,8 @@
 package cz.trinera.anakon.dtd_executor;
 
+
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.*;
 import java.sql.*;
 import java.time.*;
@@ -7,14 +10,16 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static cz.trinera.anakon.dtd_executor.DynamicConfig.LogLevel.*;
+
 public class ProcessExecutor {
 
-    private static final int MAX_CONCURRENT_PROCESSES = 10; //TODO: load from dynamic config
-    private static final int POLL_INTERVAL_SECONDS = 2; //TODO: load from dynamic config
-    private static final boolean SILENT_MODE = false; // Set to true to suppress console output //TODO: load from dynamic config (log_level)
-    private static final boolean ENABLE_RANDOM_TERMINATION = false; // For testing purposes, randomly terminate the executor
+    private int minSupportedExecutorVersion;
+    private int maxConcurrentProcesses;
+    private int pollIntervalSeconds;
+    private boolean silentMode; // Set to true to suppress console output
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_PROCESSES);
+    private ExecutorService executor;
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws Exception {
@@ -24,42 +29,59 @@ public class ProcessExecutor {
     public void start() throws Exception {
         System.out.println("Starting Anakon DTD Executor...");
         while (true) {
+            loadDynamicConfiguration();
             try (Connection conn = getConnection()) {
-                loadDynamicConfiguration();
-                checkForNewProcesses(conn);
+                if (!runningOutdatedVersion()) {
+                    checkForNewProcesses(conn);
+                }
                 checkForKillRequests(conn);
             }
-            // Check if we should randomly terminate the executor for testing purposes (later make decision to terminate based on dynamic config and executor version)
-            if (ENABLE_RANDOM_TERMINATION && shouldRandomlyTerminate()) {
-                executor.shutdown();
-                break; // Exit the loop if the executor is terminated
+            //check if executor is not outdated
+            boolean runningOutdatedVersion = Config.EXECUTOR_VERSION < minSupportedExecutorVersion;
+            if (runningOutdatedVersion) {
+                System.out.println("Executor is running an outdated version (" + Config.EXECUTOR_VERSION + "), which is lower than the minimum supported version (" + minSupportedExecutorVersion + ").");
+                //System.out.println("Minimum supported executor version is: " + minSupportedExecutorVersion);
+                if (runningProcesses.isEmpty()) {
+                    System.out.println("No processes are currently running. Exiting this outdated executor.");
+                    return;
+                } else {
+                    System.out.println("There are still some running processes. Continuing to run this outdated executor.");
+                }
             }
+            //wait for the next poll interval
+            Thread.sleep(pollIntervalSeconds * 1000L);
             System.out.println();
-            Thread.sleep(POLL_INTERVAL_SECONDS * 1000L);
         }
     }
 
-    private boolean shouldRandomlyTerminate() {
-        //randomly terminate the executor for testing purposes
-        int randomValue = new Random().nextInt(6) + 1; // Random value between 1 and 6
-        System.out.println("Rolling the dice... And it's " + randomValue);
-        if (randomValue == 6) {
-            System.out.println("I got 6! Terminating execution.");
-            return true; // Terminate the executor
-        } else {
-            System.out.println("That's not a 6, continuing execution.");
-            return false;
-        }
+    private boolean runningOutdatedVersion() {
+        return Config.EXECUTOR_VERSION < minSupportedExecutorVersion;
     }
 
-    private void loadDynamicConfiguration() {
+    private void loadDynamicConfiguration() throws IOException {
         String dynamicConfigFile = Config.instanceOf().getDynamicConfigFile();
-        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile + " (not implemented yet)");
-        // TODO: actually load, update MAX_CONCURRENT_PROCESSES, POLL_INTERVAL_SECONDS, and SILENT_MODE, and process registry
+        DynamicConfig dynamicConfig = DynamicConfig.create(new File(dynamicConfigFile));
+        DynamicConfig.ExecutorConfig executorConfig = dynamicConfig.getExecutorConfig();
+
+        minSupportedExecutorVersion = executorConfig.getMinSupportedExecutorVersion();
+        maxConcurrentProcesses = executorConfig.getMaxConcurrentProcesses();
+        pollIntervalSeconds = executorConfig.getPollingInterval();
+        silentMode = List.of(WARNING, ERROR, CRITICAL).contains(executorConfig.getLogLevel());
+
+        if (executor == null) {
+            executor = Executors.newCachedThreadPool();
+        }
+
+        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile);
+        System.out.println("Loaded minSupportedExecutorVersion: " + minSupportedExecutorVersion);
+        System.out.println("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
+        System.out.println("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
+        System.out.println("Loaded silentMode: " + silentMode);
+
     }
 
     private void log(String message) {
-        if (!SILENT_MODE) {
+        if (!silentMode) {
             System.out.println(message);
         }
     }
@@ -67,8 +89,8 @@ public class ProcessExecutor {
     private void checkForNewProcesses(Connection conn) throws SQLException {
         log("Checking for new processes...");
         int runningCount = runningProcesses.size();
-        int slotsAvailable = MAX_CONCURRENT_PROCESSES - runningCount;
-        log("Currently running: " + runningCount + " / " + MAX_CONCURRENT_PROCESSES);
+        int slotsAvailable = maxConcurrentProcesses - runningCount;
+        log("Currently running: " + runningCount + " / " + maxConcurrentProcesses);
         if (slotsAvailable <= 0) {
             log("Max running processes reached. Skipping.");
             return;
