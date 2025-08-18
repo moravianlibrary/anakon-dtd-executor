@@ -69,8 +69,7 @@ public class ProcessExecutor {
         silentMode = List.of(WARNING, ERROR, CRITICAL).contains(executorConfig.getLogLevel());
 
         if (executor == null) {
-            //TODO: make executor change thread pool dynamically
-            executor = Executors.newFixedThreadPool(maxConcurrentProcesses);
+            executor = Executors.newCachedThreadPool();
         }
 
         System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile);
