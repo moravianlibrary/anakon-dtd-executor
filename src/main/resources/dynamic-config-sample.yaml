@@ -19,6 +19,7 @@ processes:
       - name: max_duration
         type: integer
         description: Maximum duration in seconds for the process to run. If not set runs indefinitely or until cancelled.
+        example: 60
       - name: failure_strategy
         type: enum
         options: [ can, will ]
@@ -31,6 +32,7 @@ processes:
     inputs:
       - name: start_date
         type: date
+        example: 2023-01-01
       - name: end_date
         type: date
       - name: include_headers
@@ -47,10 +49,12 @@ processes:
         type: string
         description: The base URL of the Kramerius instance.
         mandatory: true
+        example: https://kramerius.mzk.cz/search
       - name: object_pid
         type: string
         mandatory: true
         description: The PID of the object in Kramerius to generate the report for.
+        example: uuid:12345678-1234-1234-1234-123456789012
     outputs:
       - file: report.json
         mime_type: application/json
@@ -77,6 +81,7 @@ processes:
       - name: metrics
         type: list[string]
         mandatory: true
+        example: ["views", "downloads"]
       - name: time_window
         type: string
     outputs:
