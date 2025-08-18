@@ -86,7 +86,7 @@ public class ProcessExecutor {
             return;
         }
 
-        String sql = "SELECT id, type, input_data FROM dtd WHERE status = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
+        String sql = "SELECT id, type, input_data FROM dtd WHERE state = 'CREATED' ORDER BY created ASC FOR UPDATE SKIP LOCKED LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, slotsAvailable);
             try (ResultSet rs = ps.executeQuery()) {
@@ -159,7 +159,7 @@ public class ProcessExecutor {
     }
 
     private void updateProcessState(Connection conn, UUID id, Process.State state, Timestamp startedAt) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, started = ?, last_modified = ? WHERE id = ?")) {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, started = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, startedAt);
             ps.setTimestamp(3, startedAt);
@@ -171,7 +171,7 @@ public class ProcessExecutor {
     private void updateFinalProcessState(UUID id, Process.State state) {
         Timestamp now = Timestamp.from(Instant.now());
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET status = ?, finished = ?, last_modified = ? WHERE id = ?")) {
+             PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, finished = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, now);
             ps.setTimestamp(3, now);
