@@ -19,7 +19,7 @@ public class ProcessExecutor {
     private int minSupportedExecutorVersion;
     private int maxConcurrentProcesses;
     private int pollIntervalSeconds;
-    private boolean silentMode; // Set to true to suppress console output
+    private DynamicConfig.LogLevel silentMode; // Set to (WARNING, ERROR, CRITICAL) to suppress console output
 
     private ExecutorService executor;
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();
@@ -68,7 +68,7 @@ public class ProcessExecutor {
         minSupportedExecutorVersion = executorConfig.getMinSupportedExecutorVersion();
         maxConcurrentProcesses = executorConfig.getMaxConcurrentProcesses();
         pollIntervalSeconds = executorConfig.getPollingInterval();
-        silentMode = List.of(WARNING, ERROR, CRITICAL).contains(executorConfig.getLogLevel());
+        silentMode = executorConfig.getLogLevel();
 
         if (executor == null) {
             executor = Executors.newCachedThreadPool();
@@ -83,7 +83,7 @@ public class ProcessExecutor {
     }
 
     private void log(String message) {
-        if (!silentMode) {
+        if (!List.of(WARNING, ERROR, CRITICAL).contains(silentMode)) {
             System.out.println(message);
         }
     }
