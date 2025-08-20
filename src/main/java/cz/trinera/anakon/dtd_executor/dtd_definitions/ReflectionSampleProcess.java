@@ -1,4 +1,4 @@
-package cz.trinera.anakon.dtd_executor;
+package cz.trinera.anakon.dtd_executor.dtd_definitions;
 
 import java.nio.file.Path;
 import java.util.UUID;

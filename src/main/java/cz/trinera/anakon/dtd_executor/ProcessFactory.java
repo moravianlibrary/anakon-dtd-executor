@@ -1,25 +1,30 @@
 package cz.trinera.anakon.dtd_executor;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Supplier;
-
-import cz.trinera.anakon.dtd_executor.dtd_definitions.TestProcess;
 import cz.trinera.anakon.dtd_executor.dtd_definitions.UndefinedProcess;
 
-public class ProcessFactory {
-    private static final Map<String, Supplier<Process>> registry = new HashMap<>();
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-    static {
-        registry.put("Test", TestProcess::new);
-        // registry.put("Export", ExportProcess::new); // další typy
+public class ProcessFactory {
+    private static final Map<String, Process> registry = new HashMap<>();
+
+    public static void registerProcess(String name, Process process) {
+        registry.put(name, process);
+    }
+
+    public static Set<String> listProcesses() {
+        return registry.keySet();
     }
 
     public static Process create(String type) {
-        Supplier<Process> supplier = registry.get(type);
-        if (supplier == null) {
+        Process process = registry.get(type);
+        if (process == null) {
             return new UndefinedProcess(); //will still run and then fail gracefully
         }
-        return supplier.get();
+        return process;
     }
 }

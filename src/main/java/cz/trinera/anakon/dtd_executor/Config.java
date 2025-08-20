@@ -18,6 +18,7 @@ public class Config {
     private final String dbUser;
     private final String dbPassword;
     private final String dynamicConfigFile;
+    private final String processesDir;
 
     public static void init(File propertiesFile) throws IOException {
         instance = new Config(propertiesFile);
@@ -40,6 +41,7 @@ public class Config {
         dbUser = getNonemptyProperty(properties, "db.user");
         dbPassword = getNonemptyProperty(properties, "db.password");
         dynamicConfigFile = getNonemptyProperty(properties, "dynamic.config.file");
+        processesDir = getNonemptyProperty(properties, "processes.dir");
     }
 
 
@@ -86,6 +88,8 @@ public class Config {
         return dynamicConfigFile;
     }
 
+    public String getProcessesDir() { return processesDir; }
+
     @Override
     public String toString() {
         return "Config{" +
@@ -96,6 +100,7 @@ public class Config {
                 ", dbHost='" + dbHost + '\'' +
                 ", jobsDir='" + jobsDir + '\'' +
                 ", dynamicConfigFile='" + dynamicConfigFile + '\'' +
+                ", processesDir='" + processesDir + '\'' +
                 '}';
     }
 }

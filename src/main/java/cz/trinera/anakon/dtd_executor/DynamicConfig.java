@@ -30,7 +30,11 @@ public class DynamicConfig {
         return executorConfig;
     }
 
-    static class ExecutorConfig {
+    public List<Process> getProcesses() {
+        return processes;
+    }
+
+    public static class ExecutorConfig {
         @JsonProperty("min_supported_executor_version")
         private int minSupportedExecutorVersion;
         @JsonProperty("max_concurrent_processes")
@@ -63,7 +67,7 @@ public class DynamicConfig {
         }
     }
 
-    static class Process {
+    public static class Process {
         @JsonProperty("type")
         private String type;
         @JsonProperty("class_name")
@@ -74,6 +78,26 @@ public class DynamicConfig {
         private List<Map<String, Object>> inputs;
         @JsonProperty("outputs")
         private List<Map<String, Object>> outputs;
+
+        public String getType() {
+            return type;
+        }
+
+        public String getClassName() {
+            return className;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public List<Map<String, Object>> getInputs() {
+            return inputs;
+        }
+
+        public List<Map<String, Object>> getOutputs() {
+            return outputs;
+        }
     }
 
     enum LogLevel {

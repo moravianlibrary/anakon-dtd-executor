@@ -3,11 +3,14 @@ package cz.trinera.anakon.dtd_executor;
 import org.apache.commons.cli.*;
 
 import java.io.File;
-import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Path;
+import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -16,13 +19,6 @@ public class Main {
     private static final String OPT_CONFIG_FILE = "config_file";
 
     public static void main(String[] args) throws Exception {
-
-        //TODO: remove this in production
-        if (true) {
-            System.out.println("Running ReflectionSampleProcess...");
-            runReflectionSampleProcess();
-            return;
-        }
 
         Options options = new Options();
 
@@ -48,6 +44,15 @@ public class Main {
         String configFilePath = cmd.getOptionValue(OPT_CONFIG_FILE);
         System.out.println("Initializing configuration...");
         Config.init(new File(configFilePath));
+
+        //TODO: remove this in production
+        if (true) {
+            System.out.println("Running ReflectionSampleProcess...");
+            loadProcesses();
+        }
+
+        System.out.println("Processes loaded: " + ProcessFactory.listProcesses());
+
         run();
     }
 
@@ -58,40 +63,63 @@ public class Main {
         new ProcessExecutor().start();
     }
 
-    private static void runReflectionSampleProcess() throws Exception {
-        // Cesta k jar souboru
-        URL jarUrl = new URL("file:///Users/martinrehanek/TrineraProjects/KomplexniValidator/anakon-dtd-executor/build/libs/anakon-dtd-executor-1.6.1.jar");
+    private static void loadProcesses() throws Exception {
+        // load dir with jars and configs
+        File processDir = new File(Config.instanceOf().getProcessesDir()).getAbsoluteFile();
+        if (!processDir.exists() || !processDir.isDirectory()) {
+            throw new IllegalArgumentException("Directory does not exist: " + processDir);
+        }
 
-        // Vytvoření classloaderu
-        try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl}, Process.class.getClassLoader())) {
+        // load jars
+        File[] jarFiles = processDir.listFiles((_, name) -> name.endsWith(".jar"));
+        assert jarFiles != null;
+        URL[] jarUrls = new URL[jarFiles.length];
+        for (int i = 0; i < jarFiles.length; i++) {
+            jarUrls[i] = jarFiles[i].toURI().toURL();
+        }
 
-            // Načtení konkrétní třídy
-            Class<?> cls = Class.forName("cz.trinera.anakon.dtd_executor.ReflectionSampleProcess", true, loader);
+        // load configs (yamls with processes)
+        File[] dynamicConfigFiles = processDir.listFiles((_, name) -> name.endsWith(".yaml"));
+        List<DynamicConfig.Process> processConfigs = new ArrayList<>();
+        for (File dynamicConfigFile : dynamicConfigFiles) {
+            processConfigs.addAll(DynamicConfig.create(dynamicConfigFile).getProcesses());
+        }
 
-            // Vytvoření instance
-            Object instance = cls.getDeclaredConstructor().newInstance();
+        // setup class loader
+        try (URLClassLoader loader = new URLClassLoader(jarUrls, Process.class.getClassLoader())) {
 
-            System.out.println("Načtená třída: " + instance.getClass().getName());
+            for (DynamicConfig.Process processConfig : processConfigs) {
+                // load process class
+                Class<?> cls = Class.forName(processConfig.getClassName(), true, loader);
 
-            // Získání metody 'run' s odpovídajícími parametry
-            Method method = cls.getMethod(
-                    "run",
-                    UUID.class,
-                    String.class,
-                    String.class,
-                    Path.class,
-                    AtomicBoolean.class
-            );
-            //nastavení parametrů
-            UUID id = UUID.randomUUID();
-            String type = "myType";
-            String inputData = "nějaký vstup";
-            Path outputPath = Path.of("output.txt");
-            AtomicBoolean cancelRequested = new AtomicBoolean(false);
+                // find run method
+                Method method = cls.getMethod(
+                        "run",
+                        UUID.class,
+                        String.class,
+                        String.class,
+                        Path.class,
+                        AtomicBoolean.class
+                );
+                if (!Modifier.isPublic(method.getModifiers())) {
+                    System.out.println("Skipping class " + cls.getName() + ": method run(...) is not public");
+                    continue;
+                }
 
-            // Volání metody
-            method.invoke(instance, id, type, inputData, outputPath, cancelRequested);
-            System.out.println("Metoda run byla spuštěna.");
+                // create instance of process
+                Object instance = cls.getDeclaredConstructor().newInstance();
+
+                // register process in factory
+                // because Process is @FunctionalInterface we can treat the (id, type, ...) lambda as Process.run(id, type, ...)
+                ProcessFactory.registerProcess(processConfig.getType(), ((id, type, inputData, outputPath, cancelRequested) -> {
+                    try {
+                        // call run method on instance with parameters
+                        method.invoke(instance, id, type, inputData, outputPath, cancelRequested);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException("Failed to invoke run on " + cls.getName(), e);
+                    }
+                }));
+            }
 
         }
     }
