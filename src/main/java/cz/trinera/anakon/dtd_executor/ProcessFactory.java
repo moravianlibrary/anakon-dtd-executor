@@ -103,8 +103,10 @@ public class ProcessFactory {
                 System.out.println("Process loaded: " + instance.getClass().getName());
                 // call run method on instance with parameters
                 method.invoke(instance, id, type, inputData, outputPath, cancelRequested);
-            } catch (IllegalAccessException | InvocationTargetException e) {
+            } catch (IllegalAccessException e) {
                 throw new RuntimeException("Failed to invoke run on " + instance.getClass().getName(), e);
+            } catch (InvocationTargetException e) {
+                throw (Exception) e.getCause();
             }
         };
     }
