@@ -2,26 +2,25 @@ package cz.trinera.anakon.dtd_executor;
 
 import cz.trinera.anakon.dtd_executor.dtd_definitions.UndefinedProcess;
 
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 public class ProcessFactory {
-    private static final Map<String, Process> registry = new HashMap<>();
+    String type;
+    Process process;
 
-    public static void registerProcess(String name, Process process) {
-        registry.put(name, process);
+    public void registerProcess(String name, Process process) {
+        this.type = type;
+        this.process = process;
     }
 
-    public static Set<String> listProcesses() {
-        return registry.keySet();
+    public String getType() {
+        return type;
     }
 
-    public static Process create(String type) {
-        Process process = registry.get(type);
+    public Process getProcess() {
+        return process;
+    }
+
+    public Process create(String type) {
+        Process process = getProcess();
         if (process == null) {
             return new UndefinedProcess(); //will still run and then fail gracefully
         }
