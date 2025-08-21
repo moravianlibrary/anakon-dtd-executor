@@ -36,10 +36,6 @@ public class Main {
         System.out.println("Initializing configuration...");
         Config.init(new File(configFilePath));
 
-        //TODO: remove this in production
-        if (true) {
-            System.out.println("Running ReflectionSampleProcess...");
-        }
         run();
     }
 

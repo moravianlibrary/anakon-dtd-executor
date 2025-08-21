@@ -3,11 +3,6 @@ package cz.trinera.anakon.dtd_executor;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.*;
 import java.sql.*;
 import java.time.*;
@@ -118,7 +113,7 @@ public class ProcessExecutor {
     }
 
     private void launchProcess(UUID id, String type, String params) throws Exception {
-        ProcessFactory processFactory = loadProcess(type);
+        Process process = ProcessFactory.load(type);
         System.out.println("Launching process: " + id + ", type: " + type);
         Path jobDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
         jobDir.toFile().mkdirs(); // Ensure the job directory exists
@@ -127,7 +122,6 @@ public class ProcessExecutor {
 
         Runnable task = () -> {
             try {
-                Process process = processFactory.create(type);
                 process.run(id, type, params, outputPath, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
                     updateFinalProcessState(id, Process.State.CANCELED);
@@ -216,82 +210,6 @@ public class ProcessExecutor {
         }
     }
 
-    private static ProcessFactory loadProcess(String processType) throws Exception {
-        ProcessFactory processFactory = new ProcessFactory();
 
-        // load dir with jars
-        File processDir = new File(Config.instanceOf().getProcessesDir()).getAbsoluteFile();
-        if (!processDir.exists() || !processDir.isDirectory()) {
-            throw new IllegalArgumentException("Directory does not exist: " + processDir);
-        }
-
-        // load jars
-        File[] jarFiles = processDir.listFiles((_, name) -> name.endsWith(".jar"));
-        assert jarFiles != null;
-        URL[] jarUrls = new URL[jarFiles.length];
-        for (int i = 0; i < jarFiles.length; i++) {
-            jarUrls[i] = jarFiles[i].toURI().toURL();
-        }
-
-        String dynamicConfigFile = Config.instanceOf().getDynamicConfigFile();
-        DynamicConfig dynamicConfig = DynamicConfig.create(new File(dynamicConfigFile));
-        List<DynamicConfig.Process> processes = dynamicConfig.getProcesses();
-
-        // setup class loader
-        Class<?> cls = null;
-        for (DynamicConfig.Process process : processes) {
-            // load process class
-            if (process.getType().equals(processType)) {
-                try (URLClassLoader loader = new URLClassLoader(jarUrls, Process.class.getClassLoader())) {
-                    cls = Class.forName(process.getClassName(), true, loader);
-                } catch (ClassNotFoundException e) {
-                    System.out.println(".jar for class not found: " + process.getClassName());
-                    continue;
-                }
-            } else {
-                continue;
-            }
-
-            System.out.println("Class loaded: " + process.getClassName());
-
-            // find run method
-            Method method = cls.getMethod(
-                    "run",
-                    UUID.class,
-                    String.class,
-                    String.class,
-                    Path.class,
-                    AtomicBoolean.class
-            );
-            if (!Modifier.isPublic(method.getModifiers())) {
-                System.out.println("Skipping class " + cls.getName() + ": method run(...) is not public");
-                continue;
-            }
-
-            // create instance of process
-            Object instance = cls.getDeclaredConstructor().newInstance();
-
-            // register process in factory
-            // because Process is @FunctionalInterface we can treat the (id, type, ...) lambda as Process.run(id, type, ...)
-            Class<?> finalCls = cls;
-            processFactory.registerProcess(process.getType(), ((id, type, inputData, outputPath, cancelRequested) -> {
-                try {
-                    System.out.println("Process loaded: " + processFactory.getType());
-                    // call run method on instance with parameters
-                    method.invoke(instance, id, type, inputData, outputPath, cancelRequested);
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new RuntimeException("Failed to invoke run on " + finalCls.getName(), e);
-                }
-            }));
-            break;
-        }
-
-        if (cls == null){
-            System.out.println("Failed to load process: " + processType);
-        }
-
-        return processFactory;
-
-    }
 
 }
