@@ -59,7 +59,7 @@ processes:
       - file: report.json
         mime_type: application/json
 
-  - type: transform_data
+  - type: test_transform_data
     class_name: cz.mzk.anakon.dtd.transform.TransformData
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -74,7 +74,7 @@ processes:
       - file: transformed_output.json
         mime_type: application/json
 
-  - type: aggregate_metrics
+  - type: test_aggregate_metrics
     class_name: cz.mzk.anakon.dtd.metrics.AggregateMetrics
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -89,3 +89,23 @@ processes:
         mime_type: text/csv
       - file: metadata.json
         mime_type: application/json
+
+  - type: test_empty_inputs
+    class_name: cz.trinera.anakon.dtd.test.TestEmptyInputs
+    inputs:
+    outputs:
+      - file: summary.txt
+        mime_type: text/plain
+
+  - type: test_empty_outputs
+    class_name: cz.trinera.anakon.dtd.test.TestEmptyOutputs
+    inputs:
+      - name: start_date
+        type: date
+        example: 2023-01-01
+    outputs:
+
+  - type: test_empty_inputs_outputs
+    class_name: cz.trinera.anakon.dtd.test.TestEmptyInputsOutputs
+    inputs:
+    outputs:

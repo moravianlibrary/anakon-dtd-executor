@@ -49,7 +49,7 @@ public class ProcessFactory {
     }
 
     private static URL[] loadJars(File processDir) throws MalformedURLException {
-        File[] jarFiles = processDir.listFiles((_, name) -> name.endsWith(".jar"));
+        File[] jarFiles = processDir.listFiles((file, name) -> name.endsWith(".jar"));
         assert jarFiles != null;
         URL[] jarUrls = new URL[jarFiles.length];
         for (int i = 0; i < jarFiles.length; i++) {
