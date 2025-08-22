@@ -113,7 +113,6 @@ public class ProcessExecutor {
     }
 
     private void launchProcess(UUID id, String type, String params) throws Exception {
-        Process process = ProcessFactory.load(type);
         System.out.println("Launching process: " + id + ", type: " + type);
         Path jobDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
         jobDir.toFile().mkdirs(); // Ensure the job directory exists
@@ -122,6 +121,7 @@ public class ProcessExecutor {
 
         Runnable task = () -> {
             try {
+                Process process = ProcessFactory.load(type);
                 process.run(id, type, params, outputPath, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
                     updateFinalProcessState(id, Process.State.CANCELED);
