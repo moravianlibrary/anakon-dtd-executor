@@ -39,7 +39,8 @@ processes:
         mime_type: text/csv
 
   - type: test_generate_report_json
-    class_name: cz.someCompany.TestGenerateReportJSON
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestGenerateReportJsonProcess
     description: Generates a report about a periodical/monograph/etc JSON format based on the provided object PID in Kramerius.
     inputs:
       - name: kramerius_base_url
