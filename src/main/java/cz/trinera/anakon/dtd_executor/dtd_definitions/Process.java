@@ -10,6 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @FunctionalInterface
 public interface Process {
 
-    void run(UUID id, String type, String inputData, File logFile, File outputDir, AtomicBoolean cancelRequested) throws Exception;
+    void run(UUID id, String type, String inputData, File logFile, File outputDir, File configFile, AtomicBoolean cancelRequested) throws Exception;
 
 }

@@ -90,6 +90,7 @@ public class ProcessFactory {
                 String.class,
                 File.class,
                 File.class,
+                File.class,
                 AtomicBoolean.class
         );
         if (!Modifier.isPublic(method.getModifiers())) {
@@ -100,10 +101,10 @@ public class ProcessFactory {
 
     private static Process runProcess(Object instance, Method method) {
         // because Process is @FunctionalInterface we can treat the (id, type, ...) lambda as Process.run(id, type, ...)
-        return (id, type, inputData, logFile, outputDir, cancelRequested) -> {
+        return (id, type, inputData, logFile, outputDir, configFile, cancelRequested) -> {
             try {
                 // call run method on instance with parameters
-                method.invoke(instance, id, type, inputData, logFile, outputDir, cancelRequested);
+                method.invoke(instance, id, type, inputData, logFile, outputDir, configFile, cancelRequested);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException("Failed to invoke run on " + instance.getClass().getName(), e);
             } catch (InvocationTargetException e) {

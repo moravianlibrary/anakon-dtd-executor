@@ -123,8 +123,15 @@ public class ProcessExecutor {
                 Path jobDir = Paths.get(Config.instanceOf().getProcessExecutionDir(), id.toString());
                 jobDir.toFile().mkdirs(); // Ensure the job directory exists
                 File processLogFile = jobDir.resolve("output.log").toFile();
+                File processDefinitionDir = Config.Utils.getExistingReadableDir(Config.instanceOf().getProcessesDefinitionDir());
+                File configFile = new File(processDefinitionDir, type + ".config");
+                if (!configFile.exists()) {
+                    configFile = null; //no config file provided
+                } else {
+                    System.out.println("Using config file: " + configFile.getAbsolutePath());
+                }
                 Process process = ProcessFactory.load(type);
-                process.run(id, type, params, processLogFile, jobDir.toFile(), cancelRequested);
+                process.run(id, type, params, processLogFile, jobDir.toFile(), configFile, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
                     updateFinalProcessState(id, ProcessState.CANCELED);
                 } else {

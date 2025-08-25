@@ -22,7 +22,7 @@ public class TestGenerateReportJsonProcess implements Process {
     }
 
     @Override
-    public void run(UUID id, String type, String inputData, File logFile, File outputDir, AtomicBoolean cancelRequested) throws Exception {
+    public void run(UUID id, String type, String inputData, File logFile, File outputDir, File configFile, AtomicBoolean cancelRequested) throws Exception {
         try (BufferedWriter logWriter = Files.newBufferedWriter(logFile.toPath())) {
             //log parameters
             logWriter.write("    Running " + TestGenerateReportJsonProcess.class.getName() + "...\n");
@@ -31,6 +31,7 @@ public class TestGenerateReportJsonProcess implements Process {
             logWriter.write("    Input data: " + inputData + "\n");
             logWriter.write("    Log file: " + logFile + "\n");
             logWriter.write("    Output dir: " + outputDir + "\n");
+            logWriter.write("    Config file: " + configFile + "\n");
             logWriter.write("    Cancel requested: " + cancelRequested.get() + "\n");
 
             try {
