@@ -21,7 +21,7 @@ public class TestProcess implements Process {
     }
 
     @Override
-    public void run(UUID id, String type, String inputData, File logFile, AtomicBoolean cancelRequested) throws Exception {
+    public void run(UUID id, String type, String inputData, File logFile, File outputDir, AtomicBoolean cancelRequested) throws Exception {
         try (BufferedWriter writer = Files.newBufferedWriter(logFile.toPath())) {
 
             TestParams params = objectMapper.readValue(inputData, TestParams.class);

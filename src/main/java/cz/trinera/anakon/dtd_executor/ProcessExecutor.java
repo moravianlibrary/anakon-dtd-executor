@@ -123,7 +123,7 @@ public class ProcessExecutor {
                 jobDir.toFile().mkdirs(); // Ensure the job directory exists
                 File processLogFile = jobDir.resolve("output.log").toFile();
                 Process process = ProcessFactory.load(type);
-                process.run(id, type, params, processLogFile, cancelRequested);
+                process.run(id, type, params, processLogFile, jobDir.toFile(), cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
                     updateFinalProcessState(id, ProcessState.CANCELED);
                 } else {
