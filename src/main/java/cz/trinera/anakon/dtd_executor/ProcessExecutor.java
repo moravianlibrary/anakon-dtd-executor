@@ -29,7 +29,7 @@ public class ProcessExecutor {
     }
 
     public void start() throws Exception {
-        System.out.println("Starting Anakon DTD Executor...");
+        log("Starting Anakon DTD Executor...");
         while (true) {
             loadDynamicConfiguration();
             try (Connection conn = getConnection()) {
@@ -41,18 +41,18 @@ public class ProcessExecutor {
             //check if executor is not outdated
             boolean runningOutdatedVersion = Config.EXECUTOR_VERSION < minSupportedExecutorVersion;
             if (runningOutdatedVersion) {
-                System.out.println("Executor is running an outdated version (" + Config.EXECUTOR_VERSION + "), which is lower than the minimum supported version (" + minSupportedExecutorVersion + ").");
-                //System.out.println("Minimum supported executor version is: " + minSupportedExecutorVersion);
+                log("Executor is running an outdated version (" + Config.EXECUTOR_VERSION + "), which is lower than the minimum supported version (" + minSupportedExecutorVersion + ").");
+                //log("Minimum supported executor version is: " + minSupportedExecutorVersion);
                 if (runningProcesses.isEmpty()) {
-                    System.out.println("No processes are currently running. Exiting this outdated executor.");
+                    log("No processes are currently running. Exiting this outdated executor.");
                     return;
                 } else {
-                    System.out.println("There are still some running processes. Continuing to run this outdated executor.");
+                    log("There are still some running processes. Continuing to run this outdated executor.");
                 }
             }
             //wait for the next poll interval
             Thread.sleep(pollIntervalSeconds * 1000L);
-            System.out.println();
+            log("");
         }
     }
 
@@ -74,18 +74,18 @@ public class ProcessExecutor {
             executor = Executors.newCachedThreadPool();
         }
 
-        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile.getAbsolutePath());
-        System.out.println("Loaded minSupportedExecutorVersion: " + minSupportedExecutorVersion);
-        System.out.println("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
-        System.out.println("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
-        System.out.println("Loaded logLevel: " + logLevel);
+        log("Loading dynamic configuration from file: " + dynamicConfigFile.getAbsolutePath());
+        log("Loaded minSupportedExecutorVersion: " + minSupportedExecutorVersion);
+        log("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
+        log("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
+        log("Loaded logLevel: " + logLevel);
 
     }
 
     private void log(String message) {
         //TODO: improve logging, different levels for different messages
         if (!List.of(WARNING, ERROR, CRITICAL).contains(logLevel)) {
-            System.out.println(message);
+            log(message);
         }
     }
 
@@ -119,7 +119,7 @@ public class ProcessExecutor {
         AtomicBoolean cancelRequested = new AtomicBoolean(false);
         Runnable task = () -> {
             try {
-                System.out.println("Launching process: " + id + ", type: " + type);
+                log("Launching process: " + id + ", type: " + type);
                 Path jobDir = Paths.get(Config.instanceOf().getProcessExecutionDir(), id.toString());
                 jobDir.toFile().mkdirs(); // Ensure the job directory exists
                 File processLogFile = jobDir.resolve("output.log").toFile();
@@ -128,7 +128,7 @@ public class ProcessExecutor {
                 if (!configFile.exists()) {
                     configFile = null; //no config file provided
                 } else {
-                    System.out.println("Using config file: " + configFile.getAbsolutePath());
+                    log("Using config file: " + configFile.getAbsolutePath());
                 }
                 Process process = ProcessFactory.load(type);
                 process.run(id, type, params, processLogFile, jobDir.toFile(), configFile, cancelRequested);
@@ -161,7 +161,7 @@ public class ProcessExecutor {
                 UUID processId = UUID.fromString(rs.getString("dtd_id"));
                 ProcessWrapper pw = runningProcesses.get(processId);
                 if (pw != null) {
-                    System.out.println("Cancelling process: " + processId);
+                    log("Cancelling process: " + processId);
                     pw.cancelRequested.set(true);
                     pw.future.cancel(true);
                     deleteKillRequest(conn, processId);
@@ -205,7 +205,7 @@ public class ProcessExecutor {
         Config config = Config.instanceOf();
         String url = "jdbc:postgresql://" + config.getDbHost() + ":" + config.getDbPort() + "/" + config.getDbDatabase();
         log("Connecting to database: " + url);
-        //System.out.println("Using user: " + config.getDbUser() + " and password: " + config.getDbPassword());
+        //log("Using user: " + config.getDbUser() + " and password: " + config.getDbPassword());
         return DriverManager.getConnection(url, config.getDbUser(), config.getDbPassword());
     }
 
