@@ -30,14 +30,14 @@ public class ProcessFactory {
         }
         Class<?> cls = loadClass(jarUrls, processDefinition);
 
-        System.out.println("Class loaded: " + processDefinition.getClassName());
+        System.out.println("Process definition loaded: " + processDefinition.getClassName());
 
         Method method = findRunMethod(cls);
 
         // create instance of process
-        Object instance = cls.getDeclaredConstructor().newInstance();
+        Object processImplementationInstance = cls.getDeclaredConstructor().newInstance();
 
-        return makeProcess(instance, method);
+        return runProcess(processImplementationInstance, method);
     }
 
 
@@ -89,11 +89,10 @@ public class ProcessFactory {
         return method;
     }
 
-    private static Process makeProcess(Object instance, Method method) {
+    private static Process runProcess(Object instance, Method method) {
         // because Process is @FunctionalInterface we can treat the (id, type, ...) lambda as Process.run(id, type, ...)
         return (id, type, inputData, outputPath, cancelRequested) -> {
             try {
-                System.out.println("Process loaded: " + instance.getClass().getName());
                 // call run method on instance with parameters
                 method.invoke(instance, id, type, inputData, outputPath, cancelRequested);
             } catch (IllegalAccessException e) {

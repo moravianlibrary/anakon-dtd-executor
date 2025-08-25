@@ -43,8 +43,6 @@ public class DynamicConfig {
         private int pollingInterval;
         @JsonProperty("log_level")
         private LogLevel logLevel;
-        @JsonProperty("process_definition_directory")
-        private String processDefinitionDirectory;
 
         public int getMinSupportedExecutorVersion() {
             return minSupportedExecutorVersion;
@@ -62,9 +60,6 @@ public class DynamicConfig {
             return logLevel;
         }
 
-        public String getProcessDefinitionDirectory() {
-            return processDefinitionDirectory;
-        }
     }
 
     public static class Process {
