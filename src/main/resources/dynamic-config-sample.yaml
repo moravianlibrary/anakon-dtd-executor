@@ -23,7 +23,8 @@ processes:
     outputs:
 
   - type: test_export_csv
-    class_name: com.example.TestExportCSV
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestExportCsv
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
       - name: start_date
