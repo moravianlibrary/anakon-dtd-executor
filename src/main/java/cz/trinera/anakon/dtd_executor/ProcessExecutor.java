@@ -117,7 +117,7 @@ public class ProcessExecutor {
         Runnable task = () -> {
             try {
                 System.out.println("Launching process: " + id + ", type: " + type);
-                Path jobDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
+                Path jobDir = Paths.get(Config.instanceOf().getProcessExecutionDir(), id.toString());
                 jobDir.toFile().mkdirs(); // Ensure the job directory exists
                 Path outputPath = jobDir.resolve("output.log");
                 Process process = ProcessFactory.load(type);

@@ -11,7 +11,7 @@ public class Config {
 
     private static Config instance;
 
-    private final String jobsDir;
+    private final String processExecutionDir;
     private final String dbHost;
     private final int dbPort;
     private final String dbDatabase;
@@ -34,7 +34,7 @@ public class Config {
     private Config(File propertiesFile) throws IOException {
         Properties properties = new Properties();
         properties.load(Files.newInputStream(propertiesFile.toPath()));
-        jobsDir = getNonemptyProperty(properties, "jobs.dir");
+        processExecutionDir = getNonemptyProperty(properties, "process.execution.dir");
         dbHost = getNonemptyProperty(properties, "db.host");
         dbPort = Integer.parseInt(getNonemptyProperty(properties, "db.port"));
         dbDatabase = getNonemptyProperty(properties, "db.database");
@@ -60,8 +60,8 @@ public class Config {
         return value;
     }
 
-    public String getJobsDir() {
-        return jobsDir;
+    public String getProcessExecutionDir() {
+        return processExecutionDir;
     }
 
     public String getDbHost() {
@@ -100,7 +100,7 @@ public class Config {
                 ", dbDatabase='" + dbDatabase + '\'' +
                 ", dbPort=" + dbPort +
                 ", dbHost='" + dbHost + '\'' +
-                ", jobsDir='" + jobsDir + '\'' +
+                ", processExecutionDir='" + processExecutionDir + '\'' +
                 ", dynamicConfigFile='" + dynamicConfigFile + '\'' +
                 ", processesDefinitionDir='" + processesDefinitionDir + '\'' +
                 '}';
