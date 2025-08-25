@@ -11,7 +11,6 @@ import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -89,7 +88,7 @@ public class ProcessFactory {
                 UUID.class,
                 String.class,
                 String.class,
-                Path.class,
+                File.class,
                 AtomicBoolean.class
         );
         if (!Modifier.isPublic(method.getModifiers())) {
