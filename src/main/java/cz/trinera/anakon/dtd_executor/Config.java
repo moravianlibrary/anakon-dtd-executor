@@ -18,6 +18,7 @@ public class Config {
     private final String dbUser;
     private final String dbPassword;
     private final String dynamicConfigFile;
+    //TODO: rename to process-definition-dir
     private final String processesDir;
 
     public static void init(File propertiesFile) throws IOException {
@@ -84,11 +85,13 @@ public class Config {
         return dbPassword;
     }
 
-    public String getDynamicConfigFile() {
+    public String getDynamicConfigFile() throws IOException {
         return dynamicConfigFile;
     }
 
-    public String getProcessesDir() { return processesDir; }
+    public String getProcessesDir() throws IOException {
+        return processesDir;
+    }
 
     @Override
     public String toString() {
@@ -103,4 +106,52 @@ public class Config {
                 ", processesDir='" + processesDir + '\'' +
                 '}';
     }
+
+    public static final class Utils {
+
+        /**
+         * Get existing readable directory from the given path.
+         *
+         * @param fileName
+         * @return the existing readable directory
+         * @throws IllegalArgumentException if the directory does not exist or is not a directory or is not readable
+         */
+        public static File getExistingReadableDir(String fileName) throws IOException {
+            File dirFile = new File(fileName).getAbsoluteFile();
+            if (!dirFile.exists()) {
+                throw new IOException("Directory does not exist: " + dirFile);
+            }
+            if (!dirFile.isDirectory()) {
+                throw new IOException("Not a directory: " + dirFile);
+            }
+            if (!Files.isReadable(dirFile.toPath())) {
+                throw new IOException("Directory is not readable: " + dirFile);
+            }
+
+            return dirFile;
+        }
+
+        /**
+         * Get existing readable file from the given path.
+         *
+         * @param fileName
+         * @return the existing readable file
+         * @throws IllegalArgumentException if the file does not exist or is not a file or is not readable
+         */
+        public static File getExistingReadableFile(String fileName) throws IOException {
+            File file = new File(fileName).getAbsoluteFile();
+            if (!file.exists()) {
+                throw new IOException("File does not exist: " + file);
+            }
+            if (!file.isFile()) {
+                throw new IOException("Not a file: " + file);
+            }
+            if (!Files.isReadable(file.toPath())) {
+                throw new IOException("File is not readable: " + file);
+            }
+
+            return file;
+        }
+    }
+
 }

@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ProcessFactory {
 
     public static Process load(String type) throws Exception {
-        File processDir = getProcessDirectory(Config.instanceOf().getProcessesDir());
+        File processDir = Config.Utils.getExistingReadableDir(Config.instanceOf().getProcessesDir());
 
         URL[] jarUrls = loadJars(processDir);
 
@@ -40,13 +40,6 @@ public class ProcessFactory {
         return makeProcess(instance, method);
     }
 
-    private static File getProcessDirectory(String processesDir) {
-        File processDir = new File(processesDir).getAbsoluteFile();
-        if (!processDir.exists() || !processDir.isDirectory()) {
-            throw new IllegalArgumentException("Directory does not exist: " + processDir);
-        }
-        return processDir;
-    }
 
     private static URL[] loadJars(File processDir) throws MalformedURLException {
         File[] jarFiles = processDir.listFiles((file, name) -> name.endsWith(".jar"));
@@ -59,8 +52,8 @@ public class ProcessFactory {
     }
 
     private static List<DynamicConfig.Process> loadProcessesFromDynamicConfig() throws IOException {
-        String dynamicConfigFile = Config.instanceOf().getDynamicConfigFile();
-        DynamicConfig dynamicConfig = DynamicConfig.create(new File(dynamicConfigFile));
+        File dynamicConfigFile = Config.Utils.getExistingReadableFile(Config.instanceOf().getDynamicConfigFile());
+        DynamicConfig dynamicConfig = DynamicConfig.create(dynamicConfigFile);
         return dynamicConfig.getProcesses();
     }
 
@@ -91,7 +84,7 @@ public class ProcessFactory {
                 AtomicBoolean.class
         );
         if (!Modifier.isPublic(method.getModifiers())) {
-            throw new RuntimeException( cls.getName() + ": method run(...) is not public");
+            throw new RuntimeException(cls.getName() + ": method run(...) is not public");
         }
         return method;
     }

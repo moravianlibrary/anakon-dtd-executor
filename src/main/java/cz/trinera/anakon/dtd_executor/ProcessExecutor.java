@@ -59,8 +59,8 @@ public class ProcessExecutor {
     }
 
     private void loadDynamicConfiguration() throws IOException {
-        String dynamicConfigFile = Config.instanceOf().getDynamicConfigFile();
-        DynamicConfig dynamicConfig = DynamicConfig.create(new File(dynamicConfigFile));
+        File dynamicConfigFile = Config.Utils.getExistingReadableFile(Config.instanceOf().getDynamicConfigFile());
+        DynamicConfig dynamicConfig = DynamicConfig.create(dynamicConfigFile);
         DynamicConfig.ExecutorConfig executorConfig = dynamicConfig.getExecutorConfig();
 
         minSupportedExecutorVersion = executorConfig.getMinSupportedExecutorVersion();
@@ -72,7 +72,7 @@ public class ProcessExecutor {
             executor = Executors.newCachedThreadPool();
         }
 
-        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile);
+        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile.getAbsolutePath());
         System.out.println("Loaded minSupportedExecutorVersion: " + minSupportedExecutorVersion);
         System.out.println("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
         System.out.println("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
