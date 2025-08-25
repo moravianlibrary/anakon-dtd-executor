@@ -113,14 +113,13 @@ public class ProcessExecutor {
     }
 
     private void launchProcess(UUID id, String type, String params) throws Exception {
-        System.out.println("Launching process: " + id + ", type: " + type);
-        Path jobDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
-        jobDir.toFile().mkdirs(); // Ensure the job directory exists
-        Path outputPath = jobDir.resolve("output.log");
         AtomicBoolean cancelRequested = new AtomicBoolean(false);
-
         Runnable task = () -> {
             try {
+                System.out.println("Launching process: " + id + ", type: " + type);
+                Path jobDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
+                jobDir.toFile().mkdirs(); // Ensure the job directory exists
+                Path outputPath = jobDir.resolve("output.log");
                 Process process = ProcessFactory.load(type);
                 process.run(id, type, params, outputPath, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
@@ -131,7 +130,7 @@ public class ProcessExecutor {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 updateFinalProcessState(id, Process.State.CANCELED);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 e.printStackTrace();
                 updateFinalProcessState(id, Process.State.FAILED);
             } finally {
@@ -209,7 +208,6 @@ public class ProcessExecutor {
             this.cancelRequested = cancelRequested;
         }
     }
-
 
 
 }
