@@ -1,6 +1,8 @@
 package cz.trinera.anakon.dtd_executor;
 
 
+import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -59,8 +61,8 @@ public class ProcessExecutor {
     }
 
     private void loadDynamicConfiguration() throws IOException {
-        String dynamicConfigFile = Config.instanceOf().getDynamicConfigFile();
-        DynamicConfig dynamicConfig = DynamicConfig.create(new File(dynamicConfigFile));
+        File dynamicConfigFile = Config.Utils.getExistingReadableFile(Config.instanceOf().getDynamicConfigFile());
+        DynamicConfig dynamicConfig = DynamicConfig.create(dynamicConfigFile);
         DynamicConfig.ExecutorConfig executorConfig = dynamicConfig.getExecutorConfig();
 
         minSupportedExecutorVersion = executorConfig.getMinSupportedExecutorVersion();
@@ -72,7 +74,7 @@ public class ProcessExecutor {
             executor = Executors.newCachedThreadPool();
         }
 
-        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile);
+        System.out.println("Loading dynamic configuration from file: " + dynamicConfigFile.getAbsolutePath());
         System.out.println("Loaded minSupportedExecutorVersion: " + minSupportedExecutorVersion);
         System.out.println("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
         System.out.println("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
@@ -86,7 +88,7 @@ public class ProcessExecutor {
         }
     }
 
-    private void checkForNewProcesses(Connection conn) throws SQLException {
+    private void checkForNewProcesses(Connection conn) throws Exception {
         log("Checking for new processes...");
         int runningCount = runningProcesses.size();
         int slotsAvailable = maxConcurrentProcesses - runningCount;
@@ -105,35 +107,34 @@ public class ProcessExecutor {
                     String type = rs.getString("type");
                     String params = rs.getString("input_data");
 
-                    updateProcessState(conn, id, Process.State.RUNNING, Timestamp.from(Instant.now()));
+                    updateProcessState(conn, id, ProcessState.RUNNING, Timestamp.from(Instant.now()));
                     launchProcess(id, type, params);
                 }
             }
         }
     }
 
-    private void launchProcess(UUID id, String type, String params) {
-        System.out.println("Launching process: " + id + ", type: " + type);
-        Path jobDir = Paths.get(Config.instanceOf().getJobsDir(), id.toString());
-        jobDir.toFile().mkdirs(); // Ensure the job directory exists
-        Path outputPath = jobDir.resolve("output.log");
+    private void launchProcess(UUID id, String type, String params) throws Exception {
         AtomicBoolean cancelRequested = new AtomicBoolean(false);
-
         Runnable task = () -> {
             try {
-                Process process = ProcessFactory.create(type);
-                process.run(id, type, params, outputPath, cancelRequested);
+                System.out.println("Launching process: " + id + ", type: " + type);
+                Path jobDir = Paths.get(Config.instanceOf().getProcessExecutionDir(), id.toString());
+                jobDir.toFile().mkdirs(); // Ensure the job directory exists
+                File processLogFile = jobDir.resolve("output.log").toFile();
+                Process process = ProcessFactory.load(type);
+                process.run(id, type, params, processLogFile, jobDir.toFile(), cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
-                    updateFinalProcessState(id, Process.State.CANCELED);
+                    updateFinalProcessState(id, ProcessState.CANCELED);
                 } else {
-                    updateFinalProcessState(id, Process.State.COMPLETED);
+                    updateFinalProcessState(id, ProcessState.COMPLETED);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                updateFinalProcessState(id, Process.State.CANCELED);
-            } catch (Exception e) {
+                updateFinalProcessState(id, ProcessState.CANCELED);
+            } catch (Throwable e) {
                 e.printStackTrace();
-                updateFinalProcessState(id, Process.State.FAILED);
+                updateFinalProcessState(id, ProcessState.FAILED);
             } finally {
                 runningProcesses.remove(id);
             }
@@ -168,7 +169,7 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateProcessState(Connection conn, UUID id, Process.State state, Timestamp startedAt) throws SQLException {
+    private void updateProcessState(Connection conn, UUID id, ProcessState state, Timestamp startedAt) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, started = ?, last_modified = ? WHERE id = ?")) {
             ps.setString(1, state.name());
             ps.setTimestamp(2, startedAt);
@@ -178,7 +179,7 @@ public class ProcessExecutor {
         }
     }
 
-    private void updateFinalProcessState(UUID id, Process.State state) {
+    private void updateFinalProcessState(UUID id, ProcessState state) {
         Timestamp now = Timestamp.from(Instant.now());
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement("UPDATE dtd SET state = ?, finished = ?, last_modified = ? WHERE id = ?")) {
@@ -209,5 +210,6 @@ public class ProcessExecutor {
             this.cancelRequested = cancelRequested;
         }
     }
+
 
 }

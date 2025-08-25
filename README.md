@@ -3,20 +3,30 @@
 Anakon DTD Executor is a Java-based application designed to execute Anakon's DTDs (long running processes).
 It requires a Java 11 runtime environment and is built using Gradle.
 
-## Building the Project
+
+## Run
+To run the project, you can use the following command:
+
+```shell
+./gradlew run --args="--config_file <path_to_config_file>"
+```
+
+## Build & Run
+### Building the Project
 To build the project, you can use the following command:
 ```shell
 ./gradlew clean build
 ```
 
-## Running
-To run the project, you can use the following command:
-
+### Running from the built JAR
+After building the project, you can run the generated JAR file using the following command:
 ```shell
-./gradlew run --config_file <path_to_config_file>
-```
+java -jar build/libs/anakon-dtd-executor-VERSION.jar --config_file <path_to_config_file>
+``` 
+Replace `VERSION` with the actual version number of the built JAR file.
+
 ## Configuration
-See the sample configuration file in `src/main/resources/config-sample.json` for details on how to configure the application.
+See the sample configuration file in `src/main/resources/config-sample.properties` for details on how to configure the application.
 
 
 

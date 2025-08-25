@@ -5,15 +5,11 @@ executor_config:
   max_concurrent_processes: 5 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
-  process_definition_directory: /path/to/process/definitions # Directory where process definitions are stored.
-                                                             # Convention for process definition files is:
-                                                             #    file <process_type>.jar          - JAR file containing compiled Java class (named from class_name) and helper classes.
-                                                             #    file <process_type>.properties   - Properties file that will be provided to the process as input.
-                                                             #                                       Typically used for api urls, access tokens, etc.
 
 processes:
   - type: test
-    class_name: com.example.TestProcess
+    jar_name: anakon-dtd-executor-1.6.1.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestProcess
     description: Process for testing process execution and input/output handling.
     inputs:
       - name: max_duration
@@ -59,7 +55,7 @@ processes:
       - file: report.json
         mime_type: application/json
 
-  - type: transform_data
+  - type: test_transform_data
     class_name: cz.mzk.anakon.dtd.transform.TransformData
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -68,20 +64,20 @@ processes:
         mandatory: true
       - name: transformation_type
         type: enum
-        options: [normalize, anonymize, enrich]
+        options: [ normalize, anonymize, enrich ]
         default: normalize
     outputs:
       - file: transformed_output.json
         mime_type: application/json
 
-  - type: aggregate_metrics
+  - type: test_aggregate_metrics
     class_name: cz.mzk.anakon.dtd.metrics.AggregateMetrics
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
       - name: metrics
         type: list[string]
         mandatory: true
-        example: ["views", "downloads"]
+        example: [ "views", "downloads" ]
       - name: time_window
         type: string
     outputs:
@@ -89,3 +85,43 @@ processes:
         mime_type: text/csv
       - file: metadata.json
         mime_type: application/json
+
+  - type: test_empty_inputs
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
+    description: Test process with empty inputs, will only print its parameters.
+    inputs:
+    outputs:
+      - file: summary.txt
+        mime_type: text/plain
+
+  - type: test_empty_outputs
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
+    description: Test process with empty outputs, will only print its parameters.
+    inputs:
+      - name: start_date
+        type: date
+        example: 2023-01-01
+    outputs:
+
+  - type: test_empty_inputs_outputs
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
+    description: Test process with empty inputs and outputs, will only print its parameters.
+    inputs:
+    outputs:
+
+  - type: test_wrong_contract_missing_method_run
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.MissingMethodRunProcess
+    description: Test process with wrong contract - missing method 'run'.
+    inputs:
+    outputs:
+
+  - type: test_wrong_contract_wrong_method_run
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.WrongMethodRunProcess
+    description: Test process with wrong contract - wrong method 'run' signature.
+    inputs:
+    outputs:

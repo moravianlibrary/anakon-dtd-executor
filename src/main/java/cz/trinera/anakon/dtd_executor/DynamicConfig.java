@@ -23,14 +23,17 @@ public class DynamicConfig {
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build();
         return mapper.readValue(dynamicConfigFile, DynamicConfig.class);
-
     }
 
     public ExecutorConfig getExecutorConfig() {
         return executorConfig;
     }
 
-    static class ExecutorConfig {
+    public List<Process> getProcesses() {
+        return processes;
+    }
+
+    public static class ExecutorConfig {
         @JsonProperty("min_supported_executor_version")
         private int minSupportedExecutorVersion;
         @JsonProperty("max_concurrent_processes")
@@ -39,8 +42,6 @@ public class DynamicConfig {
         private int pollingInterval;
         @JsonProperty("log_level")
         private LogLevel logLevel;
-        @JsonProperty("process_definition_directory")
-        private String processDefinitionDirectory;
 
         public int getMinSupportedExecutorVersion() {
             return minSupportedExecutorVersion;
@@ -58,14 +59,13 @@ public class DynamicConfig {
             return logLevel;
         }
 
-        public String getProcessDefinitionDirectory() {
-            return processDefinitionDirectory;
-        }
     }
 
-    static class Process {
+    public static class Process {
         @JsonProperty("type")
         private String type;
+        @JsonProperty("jar_name")
+        private String jarName;
         @JsonProperty("class_name")
         private String className;
         @JsonProperty("description")
@@ -74,6 +74,30 @@ public class DynamicConfig {
         private List<Map<String, Object>> inputs;
         @JsonProperty("outputs")
         private List<Map<String, Object>> outputs;
+
+        public String getType() {
+            return type;
+        }
+
+        public String getJarName() {
+            return jarName;
+        }
+
+        public String getClassName() {
+            return className;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public List<Map<String, Object>> getInputs() {
+            return inputs;
+        }
+
+        public List<Map<String, Object>> getOutputs() {
+            return outputs;
+        }
     }
 
     enum LogLevel {

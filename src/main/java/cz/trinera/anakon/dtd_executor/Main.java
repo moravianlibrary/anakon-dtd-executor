@@ -3,7 +3,7 @@ package cz.trinera.anakon.dtd_executor;
 import org.apache.commons.cli.*;
 
 import java.io.File;
-import java.io.IOException;
+import java.nio.file.*;
 
 public class Main {
 
@@ -35,6 +35,7 @@ public class Main {
         String configFilePath = cmd.getOptionValue(OPT_CONFIG_FILE);
         System.out.println("Initializing configuration...");
         Config.init(new File(configFilePath));
+
         run();
     }
 
@@ -44,4 +45,5 @@ public class Main {
         //System.out.println(config);
         new ProcessExecutor().start();
     }
-}
+
+    }
