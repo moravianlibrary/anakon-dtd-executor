@@ -18,8 +18,7 @@ public class Config {
     private final String dbUser;
     private final String dbPassword;
     private final String dynamicConfigFile;
-    //TODO: rename to process-definition-dir
-    private final String processesDir;
+    private final String processesDefinitionDir;
 
     public static void init(File propertiesFile) throws IOException {
         instance = new Config(propertiesFile);
@@ -42,7 +41,7 @@ public class Config {
         dbUser = getNonemptyProperty(properties, "db.user");
         dbPassword = getNonemptyProperty(properties, "db.password");
         dynamicConfigFile = getNonemptyProperty(properties, "dynamic.config.file");
-        processesDir = getNonemptyProperty(properties, "processes.dir");
+        processesDefinitionDir = getNonemptyProperty(properties, "processes.definition.dir");
     }
 
 
@@ -89,8 +88,8 @@ public class Config {
         return dynamicConfigFile;
     }
 
-    public String getProcessesDir() throws IOException {
-        return processesDir;
+    public String getProcessesDefinitionDir() throws IOException {
+        return processesDefinitionDir;
     }
 
     @Override
@@ -103,7 +102,7 @@ public class Config {
                 ", dbHost='" + dbHost + '\'' +
                 ", jobsDir='" + jobsDir + '\'' +
                 ", dynamicConfigFile='" + dynamicConfigFile + '\'' +
-                ", processesDir='" + processesDir + '\'' +
+                ", processesDefinitionDir='" + processesDefinitionDir + '\'' +
                 '}';
     }
 

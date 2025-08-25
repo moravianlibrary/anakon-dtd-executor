@@ -18,19 +18,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ProcessFactory {
 
     public static Process load(String type) throws Exception {
-        File processDir = Config.Utils.getExistingReadableDir(Config.instanceOf().getProcessesDir());
+        File processDefinitionDir = Config.Utils.getExistingReadableDir(Config.instanceOf().getProcessesDefinitionDir());
 
-        URL[] jarUrls = loadJars(processDir);
+        URL[] jarUrls = lookForExistingJars(processDefinitionDir);
 
-        List<DynamicConfig.Process> processes = loadProcessesFromDynamicConfig();
+        List<DynamicConfig.Process> processDefinitions = loadProcessesFromDynamicConfig();
 
-        DynamicConfig.Process process = findProcess(type, processes);
-        if (process == null) {
+        DynamicConfig.Process processDefinition = findProcess(type, processDefinitions);
+        if (processDefinition == null) {
             return new UndefinedProcess(); //will still run and then fail gracefully
         }
-        Class<?> cls = loadClass(jarUrls, process);
+        Class<?> cls = loadClass(jarUrls, processDefinition);
 
-        System.out.println("Class loaded: " + process.getClassName());
+        System.out.println("Class loaded: " + processDefinition.getClassName());
 
         Method method = findRunMethod(cls);
 
@@ -41,8 +41,8 @@ public class ProcessFactory {
     }
 
 
-    private static URL[] loadJars(File processDir) throws MalformedURLException {
-        File[] jarFiles = processDir.listFiles((file, name) -> name.endsWith(".jar"));
+    private static URL[] lookForExistingJars(File processDefinitionDir) throws MalformedURLException {
+        File[] jarFiles = processDefinitionDir.listFiles((file, name) -> name.endsWith(".jar"));
         assert jarFiles != null;
         URL[] jarUrls = new URL[jarFiles.length];
         for (int i = 0; i < jarFiles.length; i++) {
