@@ -3,7 +3,6 @@ package cz.trinera.anakon.dtd_executor;
 import org.apache.commons.cli.*;
 
 import java.io.File;
-import java.nio.file.*;
 
 public class Main {
 
@@ -46,4 +45,4 @@ public class Main {
         new ProcessExecutor().start();
     }
 
-    }
+}

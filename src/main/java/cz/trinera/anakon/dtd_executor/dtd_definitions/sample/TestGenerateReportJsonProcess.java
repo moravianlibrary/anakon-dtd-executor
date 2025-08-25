@@ -25,7 +25,7 @@ public class TestGenerateReportJsonProcess implements Process {
     public void run(UUID id, String type, String inputData, File logFile, File outputDir, AtomicBoolean cancelRequested) throws Exception {
         try (BufferedWriter logWriter = Files.newBufferedWriter(logFile.toPath())) {
             //log parameters
-            logWriter.write("    Running " + PrintoutParamsProcess.class.getName() + "...\n");
+            logWriter.write("    Running " + TestGenerateReportJsonProcess.class.getName() + "...\n");
             logWriter.write("    ID: " + id + "\n");
             logWriter.write("    Process type: " + type + "\n");
             logWriter.write("    Input data: " + inputData + "\n");

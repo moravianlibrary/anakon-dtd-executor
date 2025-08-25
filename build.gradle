@@ -22,6 +22,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
     //yaml parser
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.2'
+    //json
+    implementation 'org.json:json:20220924'
 }
 
 test {

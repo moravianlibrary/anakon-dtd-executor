@@ -1,7 +1,7 @@
 executor_config:
   min_supported_executor_version: 2 # Minimum version of the executor that should be running
-                                    # Each executor with lower versions will finish running current processes and not schedule any new ones.
-                                    # And it will finish its main loop after the last process finishes.
+    # Each executor with lower versions will finish running current processes and not schedule any new ones.
+  # And it will finish its main loop after the last process finishes.
   max_concurrent_processes: 5 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
@@ -73,7 +73,8 @@ processes:
         mime_type: application/json
 
   - type: test_aggregate_metrics
-    class_name: cz.mzk.anakon.dtd.metrics.AggregateMetrics
+    jar_name: anakon-dtd-executor-1.6.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestAggregateMetricsProcess
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
       - name: metrics
