@@ -19,7 +19,7 @@ public class ProcessExecutor {
     private int minSupportedExecutorVersion;
     private int maxConcurrentProcesses;
     private int pollIntervalSeconds;
-    private DynamicConfig.LogLevel silentMode; // Set to (WARNING, ERROR, CRITICAL) to suppress console output
+    private DynamicConfig.LogLevel logLevel; // Set to (WARNING, ERROR, CRITICAL) to suppress console output
 
     private ExecutorService executor;
     private final Map<UUID, ProcessWrapper> runningProcesses = new ConcurrentHashMap<>();
@@ -68,7 +68,7 @@ public class ProcessExecutor {
         minSupportedExecutorVersion = executorConfig.getMinSupportedExecutorVersion();
         maxConcurrentProcesses = executorConfig.getMaxConcurrentProcesses();
         pollIntervalSeconds = executorConfig.getPollingInterval();
-        silentMode = executorConfig.getLogLevel();
+        logLevel = executorConfig.getLogLevel();
 
         if (executor == null) {
             executor = Executors.newCachedThreadPool();
@@ -78,12 +78,13 @@ public class ProcessExecutor {
         System.out.println("Loaded minSupportedExecutorVersion: " + minSupportedExecutorVersion);
         System.out.println("Loaded maxConcurrentProcesses: " + maxConcurrentProcesses);
         System.out.println("Loaded pollIntervalSeconds: " + pollIntervalSeconds);
-        System.out.println("Loaded silentMode: " + silentMode);
+        System.out.println("Loaded logLevel: " + logLevel);
 
     }
 
     private void log(String message) {
-        if (!List.of(WARNING, ERROR, CRITICAL).contains(silentMode)) {
+        //TODO: improve logging, different levels for different messages
+        if (!List.of(WARNING, ERROR, CRITICAL).contains(logLevel)) {
             System.out.println(message);
         }
     }
