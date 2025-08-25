@@ -1,7 +1,5 @@
 package cz.trinera.anakon.dtd_executor.dtd_definitions;
 
-import cz.trinera.anakon.dtd_executor.Process;
-
 import java.io.BufferedWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;

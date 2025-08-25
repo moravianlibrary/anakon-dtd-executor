@@ -1,5 +1,6 @@
 package cz.trinera.anakon.dtd_executor;
 
+import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;
 import cz.trinera.anakon.dtd_executor.dtd_definitions.UndefinedProcess;
 
 import java.io.File;
@@ -17,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProcessFactory {
 
-    public static Process load(String type) throws Exception {
+    public static cz.trinera.anakon.dtd_executor.dtd_definitions.Process load(String type) throws Exception {
         File processDefinitionDir = Config.Utils.getExistingReadableDir(Config.instanceOf().getProcessesDefinitionDir());
         List<DynamicConfig.Process> processDefinitions = loadProcessesFromDynamicConfig();
         DynamicConfig.Process processDefinition = findProcess(type, processDefinitions);
@@ -75,7 +76,7 @@ public class ProcessFactory {
     }
 
     private static Class<?> loadClass(URL[] jarUrls, DynamicConfig.Process process) throws IOException {
-        try (URLClassLoader loader = new URLClassLoader(jarUrls, Process.class.getClassLoader())) {
+        try (URLClassLoader loader = new URLClassLoader(jarUrls, cz.trinera.anakon.dtd_executor.dtd_definitions.Process.class.getClassLoader())) {
             return Class.forName(process.getClassName(), true, loader);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(".jar for class not found: " + process.getClassName(), e);
