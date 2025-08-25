@@ -8,6 +8,7 @@ executor_config:
 
 processes:
   - type: test
+    jar_name: anakon-dtd-executor-1.6.1.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestProcess
     description: Process for testing process execution and input/output handling.
     inputs:
@@ -86,6 +87,7 @@ processes:
         mime_type: application/json
 
   - type: test_empty_inputs
+    jar_name: anakon-dtd-executor-1.6.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty inputs, will only print its parameters.
     inputs:
@@ -94,6 +96,7 @@ processes:
         mime_type: text/plain
 
   - type: test_empty_outputs
+    jar_name: anakon-dtd-executor-1.6.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty outputs, will only print its parameters.
     inputs:
@@ -103,18 +106,21 @@ processes:
     outputs:
 
   - type: test_empty_inputs_outputs
+    jar_name: anakon-dtd-executor-1.6.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty inputs and outputs, will only print its parameters.
     inputs:
     outputs:
 
   - type: test_wrong_contract_missing_method_run
+    jar_name: anakon-dtd-executor-1.6.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.MissingMethodRunProcess
     description: Test process with wrong contract - missing method 'run'.
     inputs:
     outputs:
 
   - type: test_wrong_contract_wrong_method_run
+    jar_name: anakon-dtd-executor-1.6.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.WrongMethodRunProcess
     description: Test process with wrong contract - wrong method 'run' signature.
     inputs:

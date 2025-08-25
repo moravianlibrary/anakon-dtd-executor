@@ -23,7 +23,6 @@ public class DynamicConfig {
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build();
         return mapper.readValue(dynamicConfigFile, DynamicConfig.class);
-
     }
 
     public ExecutorConfig getExecutorConfig() {
@@ -65,6 +64,8 @@ public class DynamicConfig {
     public static class Process {
         @JsonProperty("type")
         private String type;
+        @JsonProperty("jar_name")
+        private String jarName;
         @JsonProperty("class_name")
         private String className;
         @JsonProperty("description")
@@ -76,6 +77,10 @@ public class DynamicConfig {
 
         public String getType() {
             return type;
+        }
+
+        public String getJarName() {
+            return jarName;
         }
 
         public String getClassName() {

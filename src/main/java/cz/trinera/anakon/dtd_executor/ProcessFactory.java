@@ -19,15 +19,23 @@ public class ProcessFactory {
 
     public static Process load(String type) throws Exception {
         File processDefinitionDir = Config.Utils.getExistingReadableDir(Config.instanceOf().getProcessesDefinitionDir());
-
-        URL[] jarUrls = lookForExistingJars(processDefinitionDir);
-
         List<DynamicConfig.Process> processDefinitions = loadProcessesFromDynamicConfig();
-
         DynamicConfig.Process processDefinition = findProcess(type, processDefinitions);
         if (processDefinition == null) {
             return new UndefinedProcess(); //will still run and then fail gracefully
         }
+
+        //we don't want to load all the jars in the directory and randomly pick classes from them
+        //URL[] jarUrls = lookForExistingJars(processDefinitionDir);
+        String jarFileName = processDefinition.getJarName() == null ? type + ".jar" : processDefinition.getJarName();
+        System.out.println("Loading process definition for type '" + type + "' from " + jarFileName);
+        File jarFile = new File(processDefinitionDir, jarFileName);
+        if (!jarFile.exists() || !jarFile.isFile() || !jarFile.canRead()) {
+            throw new RuntimeException("Jar file for process type '" + type + "' not found or not readable: " + jarFile.getAbsolutePath());
+        }
+        //load only the required jar
+        URL[] jarUrls = new URL[]{jarFile.toURI().toURL()};
+
         Class<?> cls = loadClass(jarUrls, processDefinition);
 
         System.out.println("Process definition loaded: " + processDefinition.getClassName());
