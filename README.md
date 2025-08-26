@@ -44,9 +44,10 @@ docker run \
   -e APP_DB_NAME=anakon_db \
   -e APP_DB_USERNAME=anakon_user \
   -e APP_DB_PASSWORD=anakon_password \
-  -e APP_DYNAMIC_CONFIG_FILE=/my/dynamic/config/file.yaml \
-  -e APP_PROCESSES_DEFINITION_DIR=/my/processes/definitions \
-  -e APP_PROCESS_EXECUTION_DIR=/my/jobs/data \
+  -e APP_DYNAMIC_CONFIG_FILE=/app/dtd-executor/data/dynamic-config.yaml \
+  -e APP_PROCESSES_DEFINITION_DIR=/app/dtd-executor/data/processes-definitions \
+  -e APP_PROCESS_EXECUTION_DIR=/app/dtd-executor/data/jobs-data \
+  -v /my/dtd-executor/data/on/host/system:/app/dtd-executor/data \
 trinera/anakon-dtd-executor
 ```
 

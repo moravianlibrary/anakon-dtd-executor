@@ -19,8 +19,9 @@ processes.definition.dir=${APP_PROCESSES_DEFINITION_DIR:-/path/to/process/defini
 process.execution.dir=${APP_PROCESS_EXECUTION_DIR:-/path/to/jobs/data/folder}
 EOL
 
-echo "$CONFIG_FILE created:"
-cat "$CONFIG_FILE"
+echo "File $CONFIG_FILE created"
+#echo "$CONFIG_FILE created:"
+#cat "$CONFIG_FILE"
 
 # ===== Spuštění aplikace =====
 exec java -jar /app/anakon-dtd-executor.jar -c "$CONFIG_FILE"
