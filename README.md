@@ -32,13 +32,19 @@ See the sample configuration file in `src/main/resources/config-sample.propertie
 ### Building the Docker Image
 To build the Docker image, use the following command:
 ```shell
-docker build -t anakon-dtd-executor .
+docker build -t trinera/anakon-dtd-executor .
 ```
 
 ### Running the Docker Container
 To run the Docker container, use the following command:
 ```shell
-docker run anakon-dtd-executor 
+docker run \
+  -e APP_DB_HOST=localhost \
+  -e APP_DB_PORT=5432 \
+  -e APP_DB_NAME=anakon_db \
+  -e APP_DB_USERNAME=anakon_user \
+  -e APP_DB_PASSWORD=anakon_password \
+trinera/anakon-dtd-executor
 ```
 
 
