@@ -84,8 +84,8 @@ public class ProcessExecutor {
 
     private void log(String message) {
         //TODO: improve logging, different levels for different messages
-        if (!List.of(WARNING, ERROR, CRITICAL).contains(logLevel)) {
-            log(message);
+        if (logLevel == null || !List.of(WARNING, ERROR, CRITICAL).contains(logLevel)) {
+            System.out.println(message);
         }
     }
 
