@@ -39,7 +39,7 @@ docker build -t trinera/anakon-dtd-executor .
 To run the Docker container, use the following command:
 ```shell
 docker run \
-  -e APP_DB_HOST=localhost \
+  -e APP_DB_HOST=host.docker.internal \
   -e APP_DB_PORT=5432 \
   -e APP_DB_NAME=anakon_db \
   -e APP_DB_USERNAME=anakon_user \
@@ -50,5 +50,6 @@ docker run \
   -v /my/dtd-executor/data/on/host/system:/app/dtd-executor/data \
 trinera/anakon-dtd-executor
 ```
+The `host.docker.internal` means host machine from the container perspective.
 
 
