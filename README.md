@@ -28,8 +28,17 @@ Replace `VERSION` with the actual version number of the built JAR file.
 ## Configuration
 See the sample configuration file in `src/main/resources/config-sample.properties` for details on how to configure the application.
 
+## Docker Build & Run
+### Building the Docker Image
+To build the Docker image, use the following command:
+```shell
+docker build -t anakon-dtd-executor .
+```
 
-
-
+### Running the Docker Container
+To run the Docker container, use the following command:
+```shell
+docker run anakon-dtd-executor 
+```
 
 
