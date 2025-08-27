@@ -57,21 +57,6 @@ processes:
       - file: report.json
         mime_type: application/json
 
-  - type: test_transform_data
-    class_name: cz.mzk.anakon.dtd.transform.TransformData
-    description: Test process without any specific functionality, just to illustrate data types and outputs.
-    inputs:
-      - name: input_file_json
-        type: file
-        mandatory: true
-      - name: transformation_type
-        type: enum
-        options: [ normalize, anonymize, enrich ]
-        default: normalize
-    outputs:
-      - file: transformed_output.json
-        mime_type: application/json
-
   - type: test_aggregate_metrics
     jar_name: anakon-dtd-executor-1.7.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestAggregateMetricsProcess
