@@ -22,7 +22,7 @@ To build the project, you can use the following command:
 After building the project, you can run the generated JAR file using the following command:
 ```shell
 java -jar build/libs/anakon-dtd-executor-VERSION.jar --config_file <path_to_config_file>
-``` 
+```
 Replace `VERSION` with the actual version number of the built JAR file.
 
 ## Configuration
@@ -45,7 +45,7 @@ docker run \
   -e APP_DB_USERNAME=anakon_user \
   -e APP_DB_PASSWORD=anakon_password \
   -e APP_DYNAMIC_CONFIG_FILE=/app/dtd-executor/data/dynamic-config.yaml \
-  -e APP_PROCESSES_DEFINITION_DIR=/app/dtd-executor/data/processes-definitions \
+  -e APP_PROCESS_DEFINITION_DIR=/app/dtd-executor/data/processes-definitions \
   -e APP_PROCESS_EXECUTION_DIR=/app/dtd-executor/data/jobs-data \
   -v /my/dtd-executor/data/on/host/system:/app/dtd-executor/data \
 trinera/anakon-dtd-executor
