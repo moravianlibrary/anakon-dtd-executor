@@ -67,7 +67,7 @@ jobs:
     outputs:
       ref_name: ${{ steps.set_vars.outputs.ref_name }}
       docker_container_suffix:
-        ${{ steps.set_vars.outputs.docker_container_suffix }}-${{ github.sha }}
+        ${{ steps.set_vars.outputs.docker_container_suffix }}_${{ github.sha }}
       docker_image: ${{ steps.set_vars.outputs.docker_image }}
 
     steps:
@@ -142,7 +142,6 @@ jobs:
 
       - name: Push image to GHCR
         run: |
-          docker push "${DOCKER_IMAGE}:${DOCKER_TAG}"
           docker push "${DOCKER_IMAGE}:latest"
 
   deploy:
@@ -184,6 +183,7 @@ jobs:
         id: deploy_with_terraform
         uses: trineracz/deploy-backend-with-terraform@v0.0.1
         env:
+          TF_VAR_APP_ENV_NAME: ${{ vars.APP_ENV_NAME }}
           TF_VAR_APP_DB_HOST: ${{ vars.APP_DB_HOST }}
           TF_VAR_APP_DB_PORT: ${{ vars.APP_DB_PORT }}
           TF_VAR_APP_DB_NAME: ${{ vars.APP_DB_NAME }}
@@ -191,7 +191,7 @@ jobs:
           TF_VAR_APP_DB_PASSWORD: ${{ vars.APP_DB_PASSWORD }}
           TF_VAR_APP_PROCESS_EXECUTION_DIR: ${{ vars.APP_PROCESS_EXECUTION_DIR }}
           TF_VAR_APP_PROCESS_DEFINITION_DIR: ${{ vars.APP_PROCESS_DEFINITION_DIR }}
-          TF_VAR_APP_DYNAMIC_CONFIG_FILE: ${{ vars.APP_DTD_DYNAMIC_CONFIG_FILE }}
+          TF_VAR_APP_DYNAMIC_CONFIG_FILE: ${{ vars.APP_DYNAMIC_CONFIG_FILE }}
         with:
           TERRAFORM_DOCKER_IMAGE: ${DOCKER_IMAGE}
           TERRAFORM_DOCKER_CONTAINER_NAME:

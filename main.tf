@@ -9,6 +9,11 @@ terraform {
   }
 }
 
+variable "APP_ENV_NAME" {
+  type    = string
+  default = "test"
+}
+
 variable "APP_DB_HOST" {
   type = string
 }
@@ -50,10 +55,6 @@ variable "docker_image" {
   type = string
 }
 
-variable "deploy_domain" {
-  type = string
-}
-
 variable "docker_container_name" {
   type = string
 }
@@ -84,13 +85,13 @@ resource "docker_image" "anakon_dtd_executor" {
 
 # Create Docker Container using the anakon_dtd_executor image.
 resource "docker_container" "anakon_dtd_executor" {
-  count             = 1
-  image             = docker_image.anakon_dtd_executor.image_id
-  name              = var.docker_container_name
-  must_run          = true
-  publish_all_ports = true
-  restart           = "always" # default "no"
+  count    = 1
+  image    = docker_image.anakon_dtd_executor.image_id
+  name     = var.docker_container_name
+  must_run = true
+  restart  = "always"
   env = [
+    "APP_ENV_NAME=${var.APP_ENV_NAME}",
     "APP_DB_HOST=${var.APP_DB_HOST}",
     "APP_DB_PORT=${var.APP_DB_PORT}",
     "APP_DB_NAME=${var.APP_DB_NAME}",
@@ -98,20 +99,15 @@ resource "docker_container" "anakon_dtd_executor" {
     "APP_DB_PASSWORD=${var.APP_DB_PASSWORD}",
     "APP_PROCESS_EXECUTION_DIR=${var.APP_PROCESS_EXECUTION_DIR}",
     "APP_PROCESS_DEFINITION_DIR=${var.APP_PROCESS_DEFINITION_DIR}",
-    "APP_DYNAMIC_CONFIG_FILE=${var.APP_DTD_DYNAMIC_CONFIG_FILE}",
+    "APP_DYNAMIC_CONFIG_FILE=${var.APP_DYNAMIC_CONFIG_FILE}",
   ]
 
   mounts {
-    target = var.APP_PROCESS_EXECUTION_DIR
+    # target = dirname(var.APP_DYNAMIC_CONFIG_FILE)
+    # target = var.APP_PROCESS_EXECUTION_DIR
+    target = "/app/dtd-executor/data"
     type   = "bind"
-    source = "/srv/docker/anakon/${var.APP_ENV_NAME}/process_executions"
+    source = "/srv/docker/anakon/${var.APP_ENV_NAME}"
+    # source = "/srv/docker/anakon/${var.APP_ENV_NAME}/process_executions"
   }
-
-  # provisioner "remote-exec" {
-  #   inline = [
-  #     "mkdir -p /srv/docker/anakon/${var.APP_ENV_NAME}",
-  #     "mkdir -p /srv/docker/anakon/${var.APP_ENV_NAME}/process_definitions",
-  #     "mkdir -p /srv/docker/anakon/${var.APP_ENV_NAME}/process_executions",
-  #   ]
-  # }
 }
