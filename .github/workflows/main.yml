@@ -20,7 +20,6 @@ name: Main workflow
 # - APP_PROCESS_EXECUTION_DIR
 
 # this workflow uses actions:
-# https://github.com/marketplace/actions/create-json
 # https://github.com/trineracz/deploy-backend-with-terraform
 
 on:  # yamllint disable-line rule:truthy
@@ -90,30 +89,6 @@ jobs:
             echo "docker_image=ghcr.io/${GITHUB_REPOSITORY,,}-$REF_NAME"
           ) | tee --append "$GITHUB_OUTPUT" > "GITHUB_ENV"
 
-      # - name: Set docker names for dev branch
-      #   uses: jsdaniell/create-json@v1.2.3
-      #   with:
-      #     name: 'docker_names.json'
-      #     json:
-      #       '{"include": [
-      #         {
-      #           "name": "anakon_dtd_executor_${{ steps.set_vars.outputs.ref_name }}",
-      #         }
-      #       ]}'
-      #   if:
-      #     github.ref == 'refs/heads/dev'
-
-      # - name: Upload docker_names artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: docker-names-artifact
-      #     path: docker_names.json
-
-      # - name: Set docker_names output
-      #   id: set_docker_names
-      #   run: |
-      #       echo "docker_names=$(cat docker_names.json)" > "$GITHUB_OUTPUT"
-
   build:
     if:
       github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
@@ -161,8 +136,6 @@ jobs:
       run:
         shell: bash
 
-    # strategy:
-    #   matrix: ${{ fromJSON(needs.set_variables.outputs.docker_names) }}
     steps:
       - name: Configure SSH
         run: |
