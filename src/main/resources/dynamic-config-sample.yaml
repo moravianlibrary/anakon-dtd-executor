@@ -1,8 +1,8 @@
 executor_config:
-  min_supported_executor_version: 2 # Minimum version of the executor that should be running
+  min_supported_executor_version: 6 # Minimal version of the executor that should be allowed to continue running.
                                     # Each executor with lower versions will finish running current processes and not schedule any new ones.
                                     # And it will finish its main loop after the last process finishes.
-  max_concurrent_processes: 5 # Maximum number of processes that can run concurrently on this executor.
+  max_concurrent_processes: 10 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
 
