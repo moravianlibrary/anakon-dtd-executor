@@ -77,10 +77,16 @@ provider "docker" {
   }
 }
 
+# Creating anakon_dtd_executor Docker Image data source
+data "docker_registry_image" "anakon_dtd_executor" {
+  name = var.docker_image
+}
+
 # Creating anakon_dtd_executor Docker Image
 # with the `latest` as Tag
 resource "docker_image" "anakon_dtd_executor" {
-  name = var.docker_image
+  name          = data.docker_registry_image.anakon_dtd_executor.name
+  pull_triggers = [data.docker_registry_image.anakon_dtd_executor.sha256_digest]
 }
 
 # Create Docker Container using the anakon_dtd_executor image.
@@ -89,7 +95,7 @@ resource "docker_container" "anakon_dtd_executor" {
   image    = docker_image.anakon_dtd_executor.image_id
   name     = var.docker_container_name
   must_run = true
-  restart  = "always"
+  restart  = "no" # "on-failure" is better solution
   env = [
     "APP_ENV_NAME=${var.APP_ENV_NAME}",
     "APP_DB_HOST=${var.APP_DB_HOST}",
