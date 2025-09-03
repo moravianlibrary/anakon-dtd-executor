@@ -79,6 +79,7 @@ provider "docker" {
 
 # Creating anakon_dtd_executor Docker Image data source
 data "docker_registry_image" "anakon_dtd_executor" {
+  # name = "${var.docker_image}:latest"
   name = var.docker_image
 }
 

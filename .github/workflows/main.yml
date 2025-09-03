@@ -68,6 +68,7 @@ jobs:
       docker_container_suffix:
         ${{ steps.set_vars.outputs.docker_container_suffix }}_${{ github.sha }}
       docker_image: ${{ steps.set_vars.outputs.docker_image }}
+      docker_tag: ${{ steps.set_vars.outputs.docker_tag }}
 
     steps:
       - uses: actions/checkout@v4
@@ -87,6 +88,7 @@ jobs:
             echo "ref_name=$REF_NAME"
             echo "docker_container_suffix=${REF_NAME//\./_}"
             echo "docker_image=ghcr.io/${GITHUB_REPOSITORY,,}-$REF_NAME"
+            echo "docker_tag=$(date +%Y%m%d%H%M)"
           ) | tee --append "$GITHUB_OUTPUT" > "GITHUB_ENV"
 
   build:
@@ -97,6 +99,7 @@ jobs:
     environment: ${{ needs.set_environment.outputs.environment }}
     env:
       DOCKER_IMAGE: ${{ needs.set_variables.outputs.docker_image }}
+      DOCKER_TAG: ${{ needs.set_variables.outputs.docker_tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -104,9 +107,6 @@ jobs:
         run: >
           echo "${{ secrets.GHCR_TOKEN }}"
           | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Set DOCKER_TAG
-        run: echo "DOCKER_TAG=$(date +%Y%m%d%H%M)" > "$GITHUB_ENV"
 
       - name: Build the Docker image
         run: |
@@ -117,7 +117,7 @@ jobs:
 
       - name: Push image to GHCR
         run: |
-          docker push "${DOCKER_IMAGE}:latest"
+          docker push --all-tags "${DOCKER_IMAGE}"
 
   deploy:
     name: deploy
@@ -129,6 +129,7 @@ jobs:
     environment: ${{ needs.set_environment.outputs.environment }}
     env:
       DOCKER_IMAGE: ${{ needs.set_variables.outputs.docker_image }}
+      DOCKER_TAG: ${{ needs.set_variables.outputs.docker_tag }}
 
     # Use the Bash shell regardless whether the GitHub Actions runner is
     # ubuntu-latest, macos-latest, or windows-latest
@@ -167,6 +168,7 @@ jobs:
           TF_VAR_APP_DYNAMIC_CONFIG_FILE: ${{ vars.APP_DYNAMIC_CONFIG_FILE }}
         with:
           TERRAFORM_DOCKER_IMAGE: ${DOCKER_IMAGE}
+          TERRAFORM_DOCKER_TAG: ${DOCKER_TAG}
           TERRAFORM_DOCKER_CONTAINER_NAME:
             "anakon_dtd_executor_${{ needs.set_variables.outputs.docker_container_suffix }}"
           TERRAFORM_DOCKER_HOST_URI: ${{ secrets.DOCKER_HOST_URI }}
