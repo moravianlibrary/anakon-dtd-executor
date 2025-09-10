@@ -1,12 +1,16 @@
 package cz.trinera.anakon.dtd_executor.dtd_definitions.sample;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -15,6 +19,8 @@ public class TestExportCsv implements Process {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static class Params {
+        public LocalDate start_date = LocalDate.MIN;
+        public LocalDate end_date  = LocalDate.now();
         public Boolean include_headers;
     }
 
@@ -31,10 +37,18 @@ public class TestExportCsv implements Process {
             logWriter.write("    Cancel requested: " + cancelRequested.get() + "\n");
 
             try {
+                //setup object mapper
+                objectMapper.registerModule(new JavaTimeModule());
+                DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                objectMapper.setDateFormat(dateFormat);
+
                 //load configuration
                 Params params = objectMapper.readValue(inputData, Params.class);
-                //TODO: načíst start_date, pokud je. Pokud je, validovat formát. Pokud není, tak vzít něco jako začátek epochy.
-                //TODO: načíst end_date, pokud je. Pokud je, validovat formát. Pokud není, tak vzít teď.
+
+                if (params.start_date.isAfter(params.end_date)){
+                    throw new IllegalArgumentException("Start date is after end date");
+                }
+
                 //TODO: načíst include_headers.
                 boolean includeHeaders = params.include_headers != null ? params.include_headers : true; //defaultně true
                 File outputFile = new File(outputDir, "export.csv");
