@@ -38,6 +38,23 @@ processes:
       - file: export.csv
         mime_type: text/csv
 
+  - type: detect-empty-volumes
+    jar_name: anakon-dtd-executor-1.7.0.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.DetectEmptyVolumesProcess
+    description: Process for detecting empty volumes in a given timeframe. Result returned in a csv.
+    inputs:
+      - name: year_start
+        type: date
+        example: 2023
+      - name: year_end
+        type: date
+      - name: kramerius_base_url
+        type: string
+        mandatory: true
+    outputs:
+      - file: export.csv
+        mime_type: text/csv
+
   - type: test_generate_report_json
     jar_name: anakon-dtd-executor-1.7.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestGenerateReportJsonProcess
