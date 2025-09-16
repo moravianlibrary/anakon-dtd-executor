@@ -131,30 +131,29 @@ public class DetectEmptyVolumesProcess implements Process{
         String currentCursorMark;
         String nextCursorMark = "*";
         KrameriusVolumesSearchResult volumes;
-        try (HttpClient httpClient = HttpClient.newHttpClient()) {
-            do {
-                currentCursorMark = nextCursorMark;
-                volumesUriBuilder.setParameter("cursorMark", currentCursorMark);
+        HttpClient httpClient = HttpClient.newHttpClient();
+        do {
+            currentCursorMark = nextCursorMark;
+            volumesUriBuilder.setParameter("cursorMark", currentCursorMark);
 
-                URI volumeUrl = volumesUriBuilder.build();
-                volumes = getRequest(log, httpClient, KrameriusVolumesSearchResult.class, volumeUrl);
-                log.write("next cursor: " + volumes.nextCursorMark + "\n");
-                log.write("docs: " + volumes.response.docs.size() + "\n");
+            URI volumeUrl = volumesUriBuilder.build();
+            volumes = getRequest(log, httpClient, KrameriusVolumesSearchResult.class, volumeUrl);
+            log.write("next cursor: " + volumes.nextCursorMark + "\n");
+            log.write("docs: " + volumes.response.docs.size() + "\n");
 
-                for (var volume : volumes.response.docs) {
-                    URIBuilder itemsUriBuilder = buildItemsUri(params, volume.pid);
-                    KrameriusItemsSearchResult items = getRequest(log, httpClient, KrameriusItemsSearchResult.class, itemsUriBuilder.build());
-                    log.write("items: " + items.response.numFound + "\n");
+            for (var volume : volumes.response.docs) {
+                URIBuilder itemsUriBuilder = buildItemsUri(params, volume.pid);
+                KrameriusItemsSearchResult items = getRequest(log, httpClient, KrameriusItemsSearchResult.class, itemsUriBuilder.build());
+                log.write("items: " + items.response.numFound + "\n");
 
-                    if (items.response.numFound <= MAX_ISSUES) {
-                        writeSearchResult(outputFile, log, volume, params);
-                    }
+                if (items.response.numFound <= MAX_ISSUES) {
+                    writeSearchResult(outputFile, log, volume, params);
                 }
+            }
 
-                currentCursorMark = nextCursorMark;
-                nextCursorMark = volumes.nextCursorMark;
-            } while (!Objects.equals(nextCursorMark, currentCursorMark));
-        }
+            currentCursorMark = nextCursorMark;
+            nextCursorMark = volumes.nextCursorMark;
+        } while (!Objects.equals(nextCursorMark, currentCursorMark));
     }
 
     private static URIBuilder buildVolumesUri(Params params) throws URISyntaxException {
