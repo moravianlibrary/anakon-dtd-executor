@@ -161,12 +161,12 @@ public class DetectEmptyVolumesProcess implements Process {
             URI volumeUrl = volumesUriBuilder.build();
             volumes = getRequest(log, httpClient, KrameriusVolumesSearchResult.class, volumeUrl);
             log.write("next cursor: " + volumes.nextCursorMark + "\n");
-            log.write("docs: " + volumes.response.docs.size() + "\n");
+            log.write("per-volumes: " + volumes.response.docs.size() + "\n");
 
             for (var volume : volumes.response.docs) {
                 URIBuilder itemsUriBuilder = buildItemsUri(params, volume.pid);
                 KrameriusItemsSearchResult items = getRequest(log, httpClient, KrameriusItemsSearchResult.class, itemsUriBuilder.build());
-                log.write("items: " + items.response.numFound + "\n");
+                log.write("per-items: " + items.response.numFound + "\n");
 
                 if (items.response.numFound <= MAX_ISSUES) {
                     writeSearchResult(outputFile, log, volume, params);
@@ -221,6 +221,7 @@ public class DetectEmptyVolumesProcess implements Process {
     }
 
     private void writeSearchResult(File outputFile, BufferedWriter log, KrameriusVolumesSearchResult.KrameriusResponse.Docs volume, Params params) throws IOException, URISyntaxException {
+        log.write("Writing down volume: " + volume.pid + "\n");
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
             csvWriter.write(volume.pid + "," +
                     volume.parentModel + "," +
