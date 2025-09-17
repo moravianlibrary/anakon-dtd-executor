@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.nio.file.StandardOpenOption.APPEND;
 
-public class DetectEmptyVolumesProcess implements Process{
+public class DetectEmptyVolumesProcess implements Process {
 
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -34,7 +34,7 @@ public class DetectEmptyVolumesProcess implements Process{
 
     private static class Params {
         public String kramerius_base_url;
-        public Year year_start  = null;
+        public Year year_start = null;
         public Year year_end = null;
     }
 
@@ -118,7 +118,7 @@ public class DetectEmptyVolumesProcess implements Process{
 
         if (params.year_start != null &&
                 params.year_end != null &&
-                params.year_start.isAfter(params.year_end)){
+                params.year_start.isAfter(params.year_end)) {
             throw new IllegalArgumentException("Start date is after end date");
         }
 
@@ -161,8 +161,8 @@ public class DetectEmptyVolumesProcess implements Process{
                 .setParameter("sort", "pid asc")
                 .setParameter("rows", String.valueOf(PAGE_SIZE))
                 .setParameter("q", "model:periodicalvolume " +
-                        (params.year_end!= null ? String.format("AND date_range_start.year:[* TO %d] ", params.year_end.getValue()) : "") +
-                        (params.year_start!= null ? String.format("AND date_range_end.year:[%d TO *] ", params.year_start.getValue()) : "")
+                        (params.year_end != null ? String.format("AND date_range_start.year:[* TO %d] ", params.year_end.getValue()) : "") +
+                        (params.year_start != null ? String.format("AND date_range_end.year:[%d TO *] ", params.year_start.getValue()) : "")
                 );
     }
 
@@ -215,14 +215,14 @@ public class DetectEmptyVolumesProcess implements Process{
 
     private static String getYearRange(KrameriusVolumesSearchResult.KrameriusResponse.Docs docs) {
         String yearRange = "";
-        if  (docs.startYear != null) {
+        if (docs.startYear != null) {
             yearRange += docs.startYear.toString();
 
-            if  (docs.endYear != null && !docs.startYear.equals(docs.endYear)) {
+            if (docs.endYear != null && !docs.startYear.equals(docs.endYear)) {
                 yearRange += " - " + docs.endYear;
             }
         } else {
-            if  (docs.endYear != null) {
+            if (docs.endYear != null) {
                 yearRange += docs.endYear;
             }
         }
