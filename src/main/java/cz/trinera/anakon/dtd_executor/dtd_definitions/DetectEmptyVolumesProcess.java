@@ -185,7 +185,7 @@ public class DetectEmptyVolumesProcess implements Process {
         HttpResponse<String> rawResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         log.write(resultClass.getSimpleName() + " response: " + rawResponse + "\n");
         if (rawResponse.statusCode() != 200) {
-            throw new RuntimeException("Unexpected response code " + rawResponse.statusCode() + " with body " + rawResponse.body());
+            throw new RuntimeException("Unexpected response code " + rawResponse.statusCode() + " from " + uri + " with body " + rawResponse.body());
         }
 
         return objectMapper.readValue(rawResponse.body(), resultClass);
