@@ -1,6 +1,6 @@
 executor_config:
   min_supported_executor_version: 6 # Minimal version of the executor that should be allowed to continue running.
-    # Each executor with lower versions will finish running current processes and not schedule any new ones.
+  # Each executor with lower versions will finish running current processes and not schedule any new ones.
   # And it will finish its main loop after the last process finishes.
   max_concurrent_processes: 10 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
@@ -38,21 +38,28 @@ processes:
       - file: export.csv
         mime_type: text/csv
 
-  - type: detect-empty-volumes
+  - type: detect-volumes-with-low-issue-count
     jar_name: anakon-dtd-executor-1.7.0.jar
-    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.DetectEmptyVolumesProcess
-    description: Process for detecting empty volumes in a given timeframe. Result returned in a csv.
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.DetectVolumesWithLowIssueCountProcess
+    description: |
+      Process for detecting volumes with low issue count in a given timeframe. 
+      Typically used for searching for volumes that are empty or missing issues.
     inputs:
+      - name: kramerius_base_url
+        type: string
+        mandatory: true
+        example: https://api.kramerius.mzk.cz/search/api/client/v7.0/search
+      - name: max_issue_count
+        type: integer
+        description: Maximal number of issues a volume must have to be considered low issue count.
+        mandatory: true
       - name: year_start
         type: date
         example: 2023
       - name: year_end
         type: date
         example: 2025
-      - name: kramerius_base_url
-        type: string
-        mandatory: true
-        example: https://api.kramerius.mzk.cz/search/api/client/v7.0/search
+
     outputs:
       - file: export.csv
         mime_type: text/csv
