@@ -52,7 +52,7 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
             .registerModule(new JavaTimeModule())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final int PAGE_SIZE = 10;
-    public static final int MAX_ISSUES = 0;
+    public static final int MAX_ISSUES = 2;
 
     private static class Params {
         public String kramerius_base_url;
@@ -215,7 +215,7 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
 
     private void writeCsvHeader(File outputFile) throws IOException {
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath())) {
-            csvWriter.write("\"PID\",\"PERIODIKUM\",\"ROK\",\"URL\"\n");
+            csvWriter.write("\"PID\",\"PARENT_MODEL\",\"YEAR\",\"URL\"\n");
             csvWriter.flush();
         }
     }
