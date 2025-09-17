@@ -1,7 +1,7 @@
 executor_config:
   min_supported_executor_version: 6 # Minimal version of the executor that should be allowed to continue running.
-                                    # Each executor with lower versions will finish running current processes and not schedule any new ones.
-                                    # And it will finish its main loop after the last process finishes.
+    # Each executor with lower versions will finish running current processes and not schedule any new ones.
+  # And it will finish its main loop after the last process finishes.
   max_concurrent_processes: 10 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
@@ -48,9 +48,11 @@ processes:
         example: 2023
       - name: year_end
         type: date
+        example: 2025
       - name: kramerius_base_url
         type: string
         mandatory: true
+        example: https://api.kramerius.mzk.cz/search/api/client/v7.0/search
     outputs:
       - file: export.csv
         mime_type: text/csv
