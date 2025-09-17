@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.http.client.utils.URIBuilder;
+import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -25,6 +26,27 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static java.nio.file.StandardOpenOption.APPEND;
 
 public class DetectEmptyVolumesProcess implements Process {
+
+    public static void main(String[] args) throws Exception {
+        UUID uuid = UUID.randomUUID();
+        System.out.println("Running DetectEmptyVolumesProcess with UUID: " + uuid);
+        File jobDir = new File("src/main/resources/local/detect_empty_volumes_process/" + uuid);
+        jobDir.mkdirs();
+        String krameriusBaseUrl = "https://api.kramerius.mzk.cz/search/api/client/v7.0/search";
+        JSONObject input = new JSONObject();
+        input.put("kramerius_base_url", krameriusBaseUrl);
+        input.put("year_start", 2024);
+        input.put("year_end", 2025);
+        new DetectEmptyVolumesProcess().run(
+                UUID.randomUUID(),
+                "DetectEmptyVolumesProcess",
+                input.toString(),
+                new File(jobDir, "process.log"),
+                jobDir,
+                null,
+                new AtomicBoolean(false)
+        );
+    }
 
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
