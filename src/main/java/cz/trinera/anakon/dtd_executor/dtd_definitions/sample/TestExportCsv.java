@@ -19,8 +19,8 @@ public class TestExportCsv implements Process {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static class Params {
-        public LocalDate start_date = LocalDate.MIN;
-        public LocalDate end_date  = LocalDate.now();
+        public LocalDate start_date;
+        public LocalDate end_date;
         public Boolean include_headers;
     }
 
@@ -45,11 +45,21 @@ public class TestExportCsv implements Process {
                 //load configuration
                 Params params = objectMapper.readValue(inputData, Params.class);
 
-                if (params.start_date.isAfter(params.end_date)){
+                if (params.start_date != null &&
+                        params.end_date != null &&
+                        params.start_date.isAfter(params.end_date)){
                     throw new IllegalArgumentException("Start date is after end date");
                 }
 
-                //TODO: načíst include_headers.
+                if (params.start_date != null){
+                    logWriter.write("    Start from: " + params.start_date + "\n");
+                }
+
+                if (params.end_date != null) {
+                    logWriter.write("    End at: " + cancelRequested.get() + "\n");
+                }
+
+
                 boolean includeHeaders = params.include_headers != null ? params.include_headers : true; //defaultně true
                 File outputFile = new File(outputDir, "export.csv");
                 fillCsvFileWithRandomData(outputFile, includeHeaders);
