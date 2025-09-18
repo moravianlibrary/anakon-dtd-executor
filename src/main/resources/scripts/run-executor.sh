@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-JAR="$DIR/anakon-dtd-executor-1.3.jar"
+JAR="$DIR/anakon-dtd-executor-1.7.0.jar"
 CONFIG_FILE="$DIR/config.properties"
 LOG="$DIR/anakon-dtd-executor.log"
 PID_FILE="$DIR/anakon-dtd-executor.pid"
