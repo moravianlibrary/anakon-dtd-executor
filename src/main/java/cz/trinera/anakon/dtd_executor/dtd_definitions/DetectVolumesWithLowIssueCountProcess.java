@@ -33,10 +33,13 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
         File jobDir = new File("src/main/resources/local/detect_volumes_with_low_issue_count/" + uuid);
         jobDir.mkdirs();
         String krameriusBaseUrl = "https://api.kramerius.mzk.cz/search/api/client/v7.0/search";
+        String dig_lib_code = "mzk";
         JSONObject input = new JSONObject();
         input.put("kramerius_base_url", krameriusBaseUrl);
         input.put("year_start", 2024);
         input.put("year_end", 2025);
+        input.put("max_issue_count", 2);
+        input.put("dig_lib_code", dig_lib_code);
         new DetectVolumesWithLowIssueCountProcess().run(
                 UUID.randomUUID(),
                 "DetectEmptyVolumesProcess",
@@ -52,12 +55,13 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
             .registerModule(new JavaTimeModule())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final int PAGE_SIZE = 10;
-    public static final int MAX_ISSUES = 2;
 
     private static class Params {
         public String kramerius_base_url;
         public Year year_start = null;
         public Year year_end = null;
+        public Integer max_issue_count;
+        public String dig_lib_code;
     }
 
     @Override
@@ -134,8 +138,10 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
         //load configuration
         Params params = objectMapper.readValue(inputData, Params.class);
 
-        if (params.kramerius_base_url == null) {
-            throw new IllegalArgumentException("Missing required parameter: kramerius_base_url");
+        checkRequired(params);
+
+        if (params.max_issue_count < 0) {
+            throw new IllegalArgumentException("Max issue count must be greater than or equal to 0");
         }
 
         if (params.year_start != null &&
@@ -145,6 +151,20 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
         }
 
         return params;
+    }
+
+    private static void checkRequired(Params params) {
+        if (params.kramerius_base_url == null) {
+            throw new IllegalArgumentException("Missing required parameter: kramerius_base_url");
+        }
+
+        if (params.max_issue_count == null) {
+            throw new IllegalArgumentException("Missing required parameter: max_issue_count");
+        }
+
+        if (params.dig_lib_code == null) {
+            throw new IllegalArgumentException("Missing required parameter: dig_lib_code");
+        }
     }
 
     private void process(BufferedWriter log, Params params, File outputFile) throws Exception {
@@ -166,10 +186,11 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
             for (var volume : volumes.response.docs) {
                 URIBuilder itemsUriBuilder = buildItemsUri(params, volume.pid);
                 KrameriusItemsSearchResult items = getRequest(log, httpClient, KrameriusItemsSearchResult.class, itemsUriBuilder.build());
-                log.write("per-items: " + items.response.numFound + "\n");
+                int numOfIssues = items.response.numFound;
+                log.write("per-items: " + numOfIssues + "\n");
 
-                if (items.response.numFound <= MAX_ISSUES) {
-                    writeSearchResult(outputFile, log, volume, params);
+                if (numOfIssues <= params.max_issue_count) {
+                    writeSearchResult(outputFile, log, volume, numOfIssues, params);
                 }
             }
 
@@ -188,10 +209,8 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
                 );
     }
 
-    private URIBuilder buildVolumeUri(Params params, String pid) throws URISyntaxException {
-        return new URIBuilder(params.kramerius_base_url)
-                .setParameter("q", "model:periodicalvolume " +
-                        ("AND pid:" + pid.replace(":", "\\:")));
+    private String buildVolumeUrl(Params params, String pid) {
+        return "https://www.digitalniknihovna.cz/" + params.dig_lib_code + "/uuid/" + pid;
     }
 
     private URIBuilder buildItemsUri(Params params, String pid) throws URISyntaxException {
@@ -215,18 +234,19 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
 
     private void writeCsvHeader(File outputFile) throws IOException {
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath())) {
-            csvWriter.write("\"PID\",\"PARENT_MODEL\",\"YEAR\",\"URL\"\n");
+            csvWriter.write("\"PID\",\"PARENT_MODEL\",\"YEAR\",\"ISSUE_COUNT\",\"URL\"\n");
             csvWriter.flush();
         }
     }
 
-    private void writeSearchResult(File outputFile, BufferedWriter log, KrameriusVolumesSearchResult.KrameriusResponse.Docs volume, Params params) throws IOException, URISyntaxException {
+    private void writeSearchResult(File outputFile, BufferedWriter log, KrameriusVolumesSearchResult.KrameriusResponse.Docs volume, int numOfIssues, Params params) throws IOException {
         log.write("Writing down volume: " + volume.pid + "\n");
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
-            csvWriter.write(volume.pid + "," +
-                    volume.parentModel + "," +
-                    getYearRange(volume) + "," +
-                    buildVolumeUri(params, volume.pid).build() + "," + "\n");
+            csvWriter.write("\"" + volume.pid + "\",\"" +
+                    volume.parentModel + "\",\"" +
+                    getYearRange(volume) + "\",\"" +
+                    numOfIssues + "\",\"" +
+                    buildVolumeUrl(params, volume.pid) + "\"" + "\n");
 
             if (!Objects.equals(volume.parentModel, "periodical")) {
                 log.write("WARNING: Parent model does not match \"periodical\" for volume: " +

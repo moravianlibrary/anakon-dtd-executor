@@ -51,8 +51,13 @@ processes:
         example: https://api.kramerius.mzk.cz/search/api/client/v7.0/search
       - name: max_issue_count
         type: integer
-        description: Maximal number of issues a volume must have to be considered low issue count.
         mandatory: true
+        description: Maximal number of issues a volume must have to be considered low issue count.
+      - name: dig_lib_code
+        type: string
+        mandatory: true
+        example: mzk
+        description: Code of the digital library.
       - name: year_start
         type: date
         example: 2023
