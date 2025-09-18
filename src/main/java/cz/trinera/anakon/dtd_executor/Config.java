@@ -7,7 +7,7 @@ import java.util.Properties;
 
 public class Config {
 
-    public static final Integer EXECUTOR_VERSION = 2; // Increment this version every time the executor changes significantly
+    public static final Integer EXECUTOR_VERSION = 3; // Increment this version every time the executor changes significantly
 
     private static Config instance;
 
