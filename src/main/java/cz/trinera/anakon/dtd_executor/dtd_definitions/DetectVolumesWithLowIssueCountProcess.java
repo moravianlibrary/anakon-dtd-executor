@@ -27,22 +27,24 @@ import static java.nio.file.StandardOpenOption.APPEND;
 
 public class DetectVolumesWithLowIssueCountProcess implements Process {
 
+    private static final int PAUSE_BETWEEN_VOLUME_REQUESTS_MS = 300;
+
     public static void main(String[] args) throws Exception {
         UUID uuid = UUID.randomUUID();
-        System.out.println("Running DetectEmptyVolumesProcess with UUID: " + uuid);
+        System.out.println("Running " + DetectVolumesWithLowIssueCountProcess.class.getName() + " with UUID: " + uuid);
         File jobDir = new File("src/main/resources/local/detect_volumes_with_low_issue_count/" + uuid);
         jobDir.mkdirs();
         String krameriusBaseUrl = "https://api.kramerius.mzk.cz/search/api/client/v7.0/search";
         String dig_lib_code = "mzk";
         JSONObject input = new JSONObject();
         input.put("kramerius_base_url", krameriusBaseUrl);
-        input.put("year_start", 2024);
+        input.put("year_start", 2022);
         input.put("year_end", 2025);
         input.put("max_issue_count", 2);
         input.put("dig_lib_code", dig_lib_code);
         new DetectVolumesWithLowIssueCountProcess().run(
                 UUID.randomUUID(),
-                "DetectEmptyVolumesProcess",
+                "detect-volumes-with-low-issue-count",
                 input.toString(),
                 new File(jobDir, "process.log"),
                 jobDir,
@@ -54,7 +56,7 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    private static final int PAGE_SIZE = 10;
+    private static final int PAGE_SIZE = 100;
 
     private static class Params {
         public String kramerius_base_url;
@@ -69,14 +71,15 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
         try (BufferedWriter logWriter = Files.newBufferedWriter(logFile.toPath())) {
             try {
                 //log parameters
-                logWriter.write("    Running " + DetectVolumesWithLowIssueCountProcess.class.getName() + "...\n");
-                logWriter.write("    ID: " + id + "\n");
-                logWriter.write("    Process type: " + type + "\n");
-                logWriter.write("    Input data: " + inputData + "\n");
-                logWriter.write("    Log file: " + logFile + "\n");
-                logWriter.write("    Output dir: " + outputDir + "\n");
-                logWriter.write("    Config file: " + configFile + "\n");
-                logWriter.write("    Cancel requested: " + cancelRequested.get() + "\n");
+                logWriter.write("Running " + DetectVolumesWithLowIssueCountProcess.class.getName() + "...\n");
+                logWriter.write("ID: " + id + "\n");
+                logWriter.write("Process type: " + type + "\n");
+                logWriter.write("Input data: " + inputData + "\n");
+                logWriter.write("Log file: " + logFile + "\n");
+                logWriter.write("Output dir: " + outputDir + "\n");
+                //logWriter.write("    Config file: " + configFile + "\n");
+                //logWriter.write("    Cancel requested: " + cancelRequested.get() + "\n");
+                logWriter.newLine();
 
                 Params params = parseInput(inputData);
 
@@ -85,10 +88,10 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
 
                 process(logWriter, params, outputFile);
 
-                logWriter.write("    Exported data to " + outputFile.getName() + "\n");
+                logWriter.write("Exported data to " + outputFile.getName() + "\n");
 
             } catch (Exception e) {
-                logWriter.write("    Error: " + e.getMessage() + "\n");
+                logWriter.write("Error: " + e.getMessage() + "\n");
                 throw e;
             } finally {
                 logWriter.flush();
@@ -173,30 +176,39 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
         String currentCursorMark;
         String nextCursorMark = "*";
         KrameriusVolumesSearchResult volumes;
-        HttpClient httpClient = HttpClient.newHttpClient();
+        HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build(); //default HTTP_2 causes GOAWAY
+        int volumeCount = 0;
+        int markedVolumeCount = 0;
         do {
             currentCursorMark = nextCursorMark;
             volumesUriBuilder.setParameter("cursorMark", currentCursorMark);
 
             URI volumeUrl = volumesUriBuilder.build();
             volumes = getRequest(log, httpClient, KrameriusVolumesSearchResult.class, volumeUrl);
-            log.write("next cursor: " + volumes.nextCursorMark + "\n");
-            log.write("per-volumes: " + volumes.response.docs.size() + "\n");
+            //log.write("next cursor: " + volumes.nextCursorMark + "\n");
+            //log.write("per-volumes: " + volumes.response.docs.size() + "\n");
+            volumeCount += volumes.response.docs.size();
 
             for (var volume : volumes.response.docs) {
                 URIBuilder itemsUriBuilder = buildItemsUri(params, volume.pid);
                 KrameriusItemsSearchResult items = getRequest(log, httpClient, KrameriusItemsSearchResult.class, itemsUriBuilder.build());
                 int numOfIssues = items.response.numFound;
-                log.write("per-items: " + numOfIssues + "\n");
+                //log.write("per-items: " + numOfIssues + "\n");
 
                 if (numOfIssues <= params.max_issue_count) {
                     writeSearchResult(outputFile, log, volume, numOfIssues, params);
+                    markedVolumeCount++;
                 }
             }
 
             currentCursorMark = nextCursorMark;
             nextCursorMark = volumes.nextCursorMark;
+            if (volumeCount % 100 == 0) {
+                log.write("Volumes processed: " + volumeCount + ", marked: " + markedVolumeCount + "\n");
+            }
+            Thread.sleep(PAUSE_BETWEEN_VOLUME_REQUESTS_MS); //to avoid overwhelming the Kramerius server
         } while (!Objects.equals(nextCursorMark, currentCursorMark));
+        log.write("Total volumes processed: " + volumeCount + ", marked: " + markedVolumeCount + "\n");
     }
 
     private static URIBuilder buildVolumesUri(Params params) throws URISyntaxException {
@@ -224,7 +236,7 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
         HttpRequest request = HttpRequest.newBuilder().GET().uri(uri).build();
 
         HttpResponse<String> rawResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        log.write(resultClass.getSimpleName() + " response: " + rawResponse + "\n");
+        //log.write(resultClass.getSimpleName() + " response: " + rawResponse + "\n");
         if (rawResponse.statusCode() != 200) {
             throw new RuntimeException("Unexpected response code " + rawResponse.statusCode() + " from " + uri + " with body " + rawResponse.body());
         }
@@ -240,7 +252,7 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
     }
 
     private void writeSearchResult(File outputFile, BufferedWriter log, KrameriusVolumesSearchResult.KrameriusResponse.Docs volume, int numOfIssues, Params params) throws IOException {
-        log.write("Writing down volume: " + volume.pid + "\n");
+        log.write("Marking volume " + volume.pid + "\n");
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
             csvWriter.write("\"" + volume.pid + "\",\"" +
                     volume.parentModel + "\",\"" +
