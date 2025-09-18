@@ -47,11 +47,11 @@ public class TestExportCsv implements Process {
 
                 if (params.start_date != null &&
                         params.end_date != null &&
-                        params.start_date.isAfter(params.end_date)){
+                        params.start_date.isAfter(params.end_date)) {
                     throw new IllegalArgumentException("Start date is after end date");
                 }
 
-                if (params.start_date != null){
+                if (params.start_date != null) {
                     logWriter.write("    Start from: " + params.start_date + "\n");
                 }
 
