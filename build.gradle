@@ -34,19 +34,39 @@ application {
     mainClass = 'cz.trinera.anakon.dtd_executor.Main'
 }
 
+
+//Packs the sample processes into a separate jar
+tasks.register('sampleProcessesJar', Jar) {
+    archiveBaseName = 'anakon-dtd-sample-processes'
+
+    from(sourceSets.main.output.classesDirs) {
+        include 'cz/trinera/anakon/dtd_executor/dtd_definitions/sample/**'
+    }
+}
+
+//Creates the jar file without including sample processes
 jar {
+    archiveBaseName = 'anakon-dtd-executor'
+
     manifest {
         attributes(
                 'Main-Class': application.mainClass
         )
     }
+
+    from(sourceSets.main.output.classesDirs) {
+        exclude 'cz/trinera/anakon/dtd_executor/dtd_definitions/sample/**'
+    }
+
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    // Exclude test resources
-    exclude('local/**') //src/main/resources/local/** is excluded
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+build {
+    dependsOn sampleProcessesJar
 }
 
 /*
