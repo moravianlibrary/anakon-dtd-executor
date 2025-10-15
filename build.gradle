@@ -34,13 +34,31 @@ application {
     mainClass = 'cz.trinera.anakon.dtd_executor.Main'
 }
 
+sourceSets {
+    main {
+        resources { exclude 'local/**' }
+        java { exclude 'cz/trinera/anakon/dtd_executor/dtd_definitions/sample/**' }
+    }
+    dtd_definitions {
+        java {
+            // použij stejné zdroje, ale vyber jen sample balíček
+            srcDir 'src/main/java'
+            include 'cz/trinera/anakon/dtd_executor/dtd_definitions/**'
+        }
+        compileClasspath += sourceSets.main.output + configurations.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
 
 //Packs the sample processes into a separate jar
 tasks.register('sampleProcessesJar', Jar) {
     archiveBaseName = 'anakon-dtd-sample-processes'
+    from sourceSets.dtd_definitions.output
 
-    from(sourceSets.main.output.classesDirs) {
-        include 'cz/trinera/anakon/dtd_executor/dtd_definitions/sample/**'
+    manifest {
+        attributes(
+                'Main-Class': 'cz.trinera.anakon.dtd_executor.dtd_definitions.sample.Main'
+        )
     }
 }
 
