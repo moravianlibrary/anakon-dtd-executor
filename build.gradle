@@ -44,6 +44,10 @@ tasks.register('sampleProcessesJar', Jar) {
     }
 }
 
+tasks.named('processResources') {
+    exclude 'local/**'
+}
+
 //Creates the jar file without including sample processes
 jar {
     archiveBaseName = 'anakon-dtd-executor'
