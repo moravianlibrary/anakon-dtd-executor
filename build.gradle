@@ -53,7 +53,17 @@ sourceSets {
 //Packs the sample processes into a separate jar
 tasks.register('sampleProcessesJar', Jar) {
     archiveBaseName = 'anakon-dtd-sample-processes'
+
     from sourceSets.dtd_definitions.output
+
+    // include all jars from dependencies
+    from({
+        configurations.runtimeClasspath
+                .filter { it.name.endsWith('.jar') }
+                .collect { zipTree(it) }
+    })
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     manifest {
         attributes(
