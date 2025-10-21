@@ -30,10 +30,11 @@ public class CoordinatesControlProcess implements Process {
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final int PAGE_SIZE = 100;
+    private static final String LIBRARY = "mzk";
 
     public static class Params {
         public String anakon_base_url;
-        public String dig_lib_code;
+        public String dig_lib_base_code;
     }
 
     private static final String coordinate =
@@ -47,10 +48,10 @@ public class CoordinatesControlProcess implements Process {
     private static class AnakonCoordsSearchResult {
 
         public AnakonItems hits;
-        public AnakonInfo total;
 
         static class AnakonItems {
             public List<Item> hits;
+            public AnakonInfo total;
 
             static class Item {
                 public Code _source;
@@ -85,7 +86,7 @@ public class CoordinatesControlProcess implements Process {
         File jobDir = new File("src/main/resources/local/coordinates_control/" + uuid);
         jobDir.mkdirs();
         String anakonBaseUrl = "https://anakon.test.api.trinera.cloud/api/v3/search";
-        String dig_lib_code = "mzk";
+        String dig_lib_code = "MZK01";
         JSONObject input = new JSONObject();
         input.put("anakon_base_url", anakonBaseUrl);
         input.put("dig_lib_code", dig_lib_code);
@@ -138,8 +139,10 @@ public class CoordinatesControlProcess implements Process {
         int size = PAGE_SIZE;
         int from = 0;
 
+        List<String> filters = buildFilters(params);
+
         do {
-            String body = "{\"size\":100,\"track_total_hits\":true,\"from\":0,\"query\":{\"bool\":{\"must\":[{\"term\":{\"library.keyword\":\"mzk\"}},{\"nested\":{\"path\":\"df_255\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_255.c.keyword\"}}]}}}}]}}}";
+            String body = "{\"size\":" + size + ",\"track_total_hits\":true,\"from\":" + from + ",\"query\":{\"bool\":{\"must\":[" + String.join(",", filters) + "]}}}";
             result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
 
             for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
@@ -151,7 +154,17 @@ public class CoordinatesControlProcess implements Process {
             }
             
             from += size;
-        } while (false); //(result.total.value > from + size);
+        } while (result.hits.total.value > from);
+    }
+
+    private static List<String> buildFilters(Params params) {
+        List<String> filters = new ArrayList<>();
+        filters.add("{\"term\": {\"library.keyword\": \"" + LIBRARY + "\"}}"); //library filter
+        if (params.dig_lib_base_code != null) {
+            filters.add("{\"term\": {\"base.keyword\": \"" + params.dig_lib_base_code + "\"}}"); //base filter
+        }
+        filters.add("{\"nested\": {\"path\": \"df_255\", \"query\": {\"bool\": {\"must\": [{\"exists\": {\"field\": \"df_255.c.keyword\"}}]}}}}"); //df_255.c filter
+        return filters;
     }
 
     private void checkCoords(AnakonCoordsSearchResult.AnakonItems.Item item) {
