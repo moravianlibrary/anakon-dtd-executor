@@ -16,6 +16,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
@@ -34,6 +36,13 @@ public class CoordinatesControlProcess implements Process {
         public String anakon_base_url;
         public String dig_lib_code;
     }
+
+    private static final String cardinals1 = "[EN]\\s";
+    private static final String cardinals2 = "\\s((v\\.d\\.)|(s\\.š\\.))";
+    private static final String coordinate = "([0-9]{2,3}°[0-9]{2}['`´][0-9]{2}\")";
+    private static final Pattern pattern1 = Pattern.compile( ".*" + cardinals1 + coordinate + "--" + cardinals1 + coordinate + "\\/" + cardinals1 + coordinate + "--" + cardinals1 + coordinate + ".*");
+    private static final Pattern pattern2 = Pattern.compile(".*" + coordinate + cardinals2 + "--" + coordinate + cardinals2 + "\\/" + coordinate + cardinals2 + "--" + coordinate + cardinals2 + ".*");
+    private static final Pattern pattern3 = Pattern.compile(pattern1 + "|" + pattern2);
 
     private static class AnakonCoordsSearchResult {
 
@@ -134,12 +143,32 @@ public class CoordinatesControlProcess implements Process {
             result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
 
             for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
-                //check coords
-                writeSearchResult(outputFile, log, item, "type of error");
+                try {
+                    checkCoords(item);
+                } catch (Exception ex) {
+                    writeSearchResult(outputFile, log, item, ex.getMessage());
+                }
             }
             
             from += size;
         } while (false); //(result.total.value > from + size);
+    }
+
+    private void checkCoords(AnakonCoordsSearchResult.AnakonItems.Item item) {
+        try {
+            String coords = item._source.df_255.stream().findFirst().get().c;
+
+            Matcher matcher1 = pattern1.matcher(coords); //first ver
+            Matcher matcher2 = pattern2.matcher(coords); //sec ver
+            Matcher matcher3 = pattern3.matcher(coords);
+
+            System.out.println(coords + "  ; " + matcher1.matches()+ "; " + matcher2.matches()+ "; " + matcher3.matches());
+            if (!matcher3.matches()) {
+                throw new IllegalArgumentException("Coordinates do not match pattern");
+            }
+        } catch (NullPointerException ex) {
+            throw new IllegalArgumentException("Missing coordinates", ex);
+        }
     }
 
     private void writeSearchResult(File outputFile, BufferedWriter log, AnakonCoordsSearchResult.AnakonItems.Item item, String typeOfError) throws IOException {
@@ -200,10 +229,6 @@ public class CoordinatesControlProcess implements Process {
     private static String httpBasicAuth(String username, String password) {
         return "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
     }
-
-
-
-
 
 
 }
