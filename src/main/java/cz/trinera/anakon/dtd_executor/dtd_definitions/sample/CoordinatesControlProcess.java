@@ -12,9 +12,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
-import java.util.Base64;
-import java.util.List;
-import java.util.UUID;
+import java.text.DecimalFormat;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,12 +36,13 @@ public class CoordinatesControlProcess implements Process {
         public String dig_lib_code;
     }
 
-    private static final String cardinals1 = "[EN]\\s";
-    private static final String cardinals2 = "\\s((v\\.d\\.)|(s\\.š\\.))";
-    private static final String coordinate = "([0-9]{2,3}°[0-9]{2}['`´][0-9]{2}\")";
-    private static final Pattern pattern1 = Pattern.compile( ".*" + cardinals1 + coordinate + "--" + cardinals1 + coordinate + "\\/" + cardinals1 + coordinate + "--" + cardinals1 + coordinate + ".*");
-    private static final Pattern pattern2 = Pattern.compile(".*" + coordinate + cardinals2 + "--" + coordinate + cardinals2 + "\\/" + coordinate + cardinals2 + "--" + coordinate + cardinals2 + ".*");
-    private static final Pattern pattern3 = Pattern.compile(pattern1 + "|" + pattern2);
+    private static final String coordinate =
+            "(?<degrees>[0-9]{1,3})°" +
+            "(?<minutes>[0-9]{2})['`´]" +
+            "(?<seconds>[0-9]{2})\"";
+
+    private static final Pattern patternEN = Pattern.compile("(?<cardinal>[ENSW])\\s" + coordinate);
+    private static final Pattern patternCZ = Pattern.compile(coordinate + "\\s(?<cardinal>v\\.d\\.|s\\.š\\.|j\\.š\\.|z\\.d\\.)");
 
     private static class AnakonCoordsSearchResult {
 
@@ -57,14 +57,14 @@ public class CoordinatesControlProcess implements Process {
 
                 static class Code {
                     public List<Coords> df_255;
-                    public List<Partial_coords> df_034;
+                    public List<Parted_coords> df_034;
                     public String id;
 
                     static class Coords {
                         public String c;
                     }
 
-                    static class Partial_coords {
+                    static class Parted_coords {
                         public String d;
                         public String e;
                         public String f;
@@ -158,14 +158,32 @@ public class CoordinatesControlProcess implements Process {
         try {
             String coords = item._source.df_255.stream().findFirst().get().c;
 
-            Matcher matcher1 = pattern1.matcher(coords); //first ver
-            Matcher matcher2 = pattern2.matcher(coords); //sec ver
-            Matcher matcher3 = pattern3.matcher(coords);
-
-            System.out.println(coords + "  ; " + matcher1.matches()+ "; " + matcher2.matches()+ "; " + matcher3.matches());
-            if (!matcher3.matches()) {
-                throw new IllegalArgumentException("Coordinates do not match pattern");
+            Matcher matcher = Pattern.compile("^[(\\[]*([^])]*)[])]*$").matcher(coords);
+            if (matcher.matches()) {
+                coords = matcher.group(1);
             }
+
+            String[] parts = coords.split("/");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Wrong coordinates format: failed to split by '/'");
+            }
+
+            String[] firstPair = parts[0].split("--");
+            String[] secondPair = parts[1].split("--");
+
+            if (firstPair.length != 2 || secondPair.length != 2) {
+                throw new IllegalArgumentException("Wrong coordinates format: failed to split by '--'");
+            }
+
+            Coords coords1 = Coords.parse(firstPair[0]);
+            Coords coords2 = Coords.parse(firstPair[1]);
+            Coords coords3 = Coords.parse(secondPair[0]);
+            Coords coords4 = Coords.parse(secondPair[1]);
+
+            //System.out.println(coords1 + "," + coords2 + "," + coords3 + "," + coords4);
+            //check parted coords
+
+
         } catch (NullPointerException ex) {
             throw new IllegalArgumentException("Missing coordinates", ex);
         }
@@ -175,15 +193,15 @@ public class CoordinatesControlProcess implements Process {
         log.write("Marking item " + item._source.id + "\n");
 
         var missing_coords = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Coords();
-        var missing_partial = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Partial_coords();
+        var missing_partial = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
 
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
             csvWriter.write("\"" + item._source.id + "\",\"" +
                     item._source.df_255.stream().findFirst().orElse(missing_coords).c + "\",\"" +
-                    item._source.df_034.stream().findFirst().orElse(missing_partial).d + "\",\"" +
-                    item._source.df_034.stream().findFirst().orElse(missing_partial).e + "\",\"" +
-                    item._source.df_034.stream().findFirst().orElse(missing_partial).f + "\",\"" +
-                    item._source.df_034.stream().findFirst().orElse(missing_partial).g + "\",\"" +
+                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).d) + "\",\"" +
+                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).e) + "\",\"" +
+                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).f) + "\",\"" +
+                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).g) + "\",\"" +
                     typeOfError + "\"" + "\n");
 
             csvWriter.flush();
@@ -231,4 +249,65 @@ public class CoordinatesControlProcess implements Process {
     }
 
 
+    static class Coords {
+        String cardinal;
+        int degrees;
+        int minutes;
+        int seconds;
+
+        static final Map<String, String> CARDINAL_MAP = Map.of(
+                "v.d.", "E",
+                "s.š.", "N",
+                "j.š.", "S",
+                "z.d.", "W"
+        );
+
+        public Coords(String cardinal, int degrees, int minutes, int seconds) {
+            this.cardinal = normalizeCardinal(cardinal);
+
+            if (degrees > 180){
+                throw new IllegalArgumentException("Degrees out of range");
+            }
+            this.degrees = degrees;
+
+            if (minutes > 59){
+                throw new IllegalArgumentException("Minutes out of range");
+            }
+            this.minutes = minutes;
+
+            if (seconds > 59){
+                throw new IllegalArgumentException("Seconds out of range");
+            }
+            this.seconds = seconds;
+        }
+
+        private static String normalizeCardinal(String cardinal) {
+            if (CARDINAL_MAP.containsKey(cardinal)) {
+                return CARDINAL_MAP.get(cardinal);
+            }
+            return cardinal;
+        }
+
+        public static Coords parse(String inputData) {
+            Matcher matcher = patternEN.matcher(inputData);
+            if (!matcher.matches()) {
+                matcher = patternCZ.matcher(inputData);
+            }
+            if (!matcher.matches()) {
+                throw new IllegalArgumentException("Expression does not match pattern on: \"" + inputData + "\"");
+            }
+
+            int degrees = Integer.parseInt(matcher.group("degrees"));
+            int minutes = Integer.parseInt(matcher.group("minutes"));
+            int seconds = Integer.parseInt(matcher.group("seconds"));
+            String cardinal = matcher.group("cardinal");
+
+            return new Coords(cardinal, degrees, minutes, seconds);
+        }
+
+        public String toCode() {
+            DecimalFormat df = new DecimalFormat("0000000");
+            return cardinal + df.format(seconds + minutes * 100L + degrees * 10000L);
+        }
+    }
 }
