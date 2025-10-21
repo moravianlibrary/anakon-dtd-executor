@@ -8,7 +8,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -20,6 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
+
+import static java.nio.file.StandardOpenOption.APPEND;
 
 public class CoordinatesControlProcess implements Process {
 
@@ -37,6 +38,7 @@ public class CoordinatesControlProcess implements Process {
     private static class AnakonCoordsSearchResult {
 
         public AnakonItems hits;
+        public AnakonInfo total;
 
         static class AnakonItems {
             public List<Item> hits;
@@ -47,6 +49,7 @@ public class CoordinatesControlProcess implements Process {
                 static class Code {
                     public List<Coords> df_255;
                     public List<Partial_coords> df_034;
+                    public String id;
 
                     static class Coords {
                         public String c;
@@ -60,6 +63,10 @@ public class CoordinatesControlProcess implements Process {
                     }
                 }
             }
+        }
+
+        static class AnakonInfo {
+            public int value;
         }
     }
 
@@ -116,17 +123,49 @@ public class CoordinatesControlProcess implements Process {
         }
     }
 
-    private void process(BufferedWriter log, Params params, File outputFile) throws URISyntaxException, IOException, InterruptedException {
+    private void process(BufferedWriter log, Params params, File outputFile) throws IOException, InterruptedException {
         HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build(); //default HTTP_2 causes GOAWAY
+        AnakonCoordsSearchResult result = null;
+        int size = PAGE_SIZE;
+        int from = 0;
 
-        String body = "{\"size\":100,\"track_total_hits\":true,\"from\":0,\"query\":{\"bool\":{\"must\":[{\"term\":{\"library.keyword\":\"mzk\"}},{\"nested\":{\"path\":\"df_255\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_255.c.keyword\"}}]}}}}]}}}";
-        var result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
+        do {
+            String body = "{\"size\":100,\"track_total_hits\":true,\"from\":0,\"query\":{\"bool\":{\"must\":[{\"term\":{\"library.keyword\":\"mzk\"}},{\"nested\":{\"path\":\"df_255\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_255.c.keyword\"}}]}}}}]}}}";
+            result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
 
-        System.out.println(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result));
-
+            for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
+                //check coords
+                writeSearchResult(outputFile, log, item, "type of error");
+            }
+            
+            from += size;
+        } while (false); //(result.total.value > from + size);
     }
 
-    private void writeCsvHeader(File outputFile) {
+    private void writeSearchResult(File outputFile, BufferedWriter log, AnakonCoordsSearchResult.AnakonItems.Item item, String typeOfError) throws IOException {
+        log.write("Marking item " + item._source.id + "\n");
+
+        var missing_coords = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Coords();
+        var missing_partial = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Partial_coords();
+
+        try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
+            csvWriter.write("\"" + item._source.id + "\",\"" +
+                    item._source.df_255.stream().findFirst().orElse(missing_coords).c + "\",\"" +
+                    item._source.df_034.stream().findFirst().orElse(missing_partial).d + "\",\"" +
+                    item._source.df_034.stream().findFirst().orElse(missing_partial).e + "\",\"" +
+                    item._source.df_034.stream().findFirst().orElse(missing_partial).f + "\",\"" +
+                    item._source.df_034.stream().findFirst().orElse(missing_partial).g + "\",\"" +
+                    typeOfError + "\"" + "\n");
+
+            csvWriter.flush();
+        }
+    }
+
+    private void writeCsvHeader(File outputFile) throws IOException {
+        try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath())) {
+            csvWriter.write("\"ID\",\"COORDINATES\",\"D\",\"E\",\"F\",\"G\",\"ERROR\"\n");
+            csvWriter.flush();
+        }
     }
 
     private Params parseInput(String inputData) throws JsonProcessingException {
