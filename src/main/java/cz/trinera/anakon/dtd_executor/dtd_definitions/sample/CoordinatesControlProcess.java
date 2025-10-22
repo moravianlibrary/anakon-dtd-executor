@@ -90,6 +90,7 @@ public class CoordinatesControlProcess implements Process {
         JSONObject input = new JSONObject();
         input.put("anakon_base_url", anakonBaseUrl);
         input.put("dig_lib_code", dig_lib_code);
+        //test();
         new CoordinatesControlProcess().run(
                 UUID.randomUUID(),
                 "coordinates_control",
@@ -171,6 +172,7 @@ public class CoordinatesControlProcess implements Process {
         try {
             String coords = item._source.df_255.stream().findFirst().get().c;
 
+            //needs to hand of warning
             Matcher matcher = Pattern.compile("^[(\\[]*([^])]*)[])]*$").matcher(coords);
             if (matcher.matches()) {
                 coords = matcher.group(1);
@@ -302,6 +304,7 @@ public class CoordinatesControlProcess implements Process {
         }
 
         public static Coords parse(String inputData) {
+            //needs to allow white space
             Matcher matcher = patternEN.matcher(inputData);
             if (!matcher.matches()) {
                 matcher = patternCZ.matcher(inputData);
@@ -322,5 +325,116 @@ public class CoordinatesControlProcess implements Process {
             DecimalFormat df = new DecimalFormat("0000000");
             return cardinal + df.format(seconds + minutes * 100L + degrees * 10000L);
         }
+    }
+
+
+
+    //temporary tests for regex
+    private static void test(){
+        var EN_extra_spaces = fillForTest("E15°20'17\"  --E  16°05'27\" /N   50°48'55\"--  N 50°30'23\"",null,null,null,null);
+        try {
+            checkCoords(EN_extra_spaces);
+            System.out.println("EN_extra_spaces: true");
+        } catch (IllegalArgumentException e) {
+            System.out.println("EN_extra_spaces: false " + e.getMessage());
+        }
+
+        var EN_extra_char = fillForTest("E 16°20´38\"--E 16°40´34\"./N 49°29´50\"--N 49°10´53\"",null,null,null,null);
+        try {
+            checkCoords(EN_extra_char);
+            System.out.println("EN_extra_char: false");
+        } catch (IllegalArgumentException e) {
+            System.out.println("EN_extra_char: " + e.getMessage().equals("Expression does not match pattern on: \"E 16°40´34\".\"") + " " + e.getMessage());
+        }
+
+        var empty = fillForTest(null,null,null,null,null);
+        try {
+            checkCoords(empty);
+            System.out.println("empty: false");
+        } catch (IllegalArgumentException e) {
+            System.out.println("empty: " + e.getMessage().equals("Missing coordinates") + " " + e.getMessage());
+        }
+
+        var missing_divider = fillForTest("E0121806","E0121806","E0132511","N0502322","N0500416"); //nkc20162856337
+        try {
+            checkCoords(missing_divider);
+            System.out.println("missing_divider: false");
+        } catch (IllegalArgumentException e) {
+            System.out.println("missing_divider: " + e.getMessage().equals("Wrong coordinates format: failed to split by '/'") + " " + e.getMessage());
+        }
+
+        var missing_dashes = fillForTest("E012/1806",null,null,null,null);
+        try {
+            checkCoords(missing_dashes);
+            System.out.println("missing_dashes: false");
+        } catch (IllegalArgumentException e) {
+            System.out.println("missing_dashes: " + e.getMessage().equals("Wrong coordinates format: failed to split by '--'") + " " + e.getMessage());
+        }
+
+        var EN_mising_nums = fillForTest("E 16°20´8\"--E 16°40´34\"/N 49°29´50\"--N 49°10´53\"",null,null,null,null);
+        try {
+            checkCoords(EN_mising_nums);
+            System.out.println("EN_missing_nums: false");
+        } catch (IllegalArgumentException e) {
+            System.out.println("EN_missing_nums: " + e.getMessage().equals("Expression does not match pattern on: \"E 16°20´8\"\"") + " " + e.getMessage());
+        }
+
+        var CZ_has_brackets = fillForTest("(006°07´01\" z.d.--010°38´05\" v.d./051°38´43\" s.š.--042°00´59\" s.š.)].",null,null,null,null);
+        try {
+            checkCoords(CZ_has_brackets);
+            System.out.println("CZ_has_brackets: true");
+        } catch (IllegalArgumentException e) {
+            System.out.println("CZ_has_brackets: false " + e.getMessage());
+        }
+
+        var exp8 = fillForTest("",null,null,null,null);
+        try {
+            checkCoords(exp8);
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage().equals(""));
+            System.out.println(e.getMessage());
+        }
+
+        var exp9 = fillForTest("",null,null,null,null);
+        try {
+            checkCoords(exp9);
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage().equals(""));
+            System.out.println(e.getMessage());
+        }
+    }
+
+    //temporary
+    private static AnakonCoordsSearchResult.AnakonItems.Item fillForTest(String c_val, String d_val, String e_val, String f_val, String g_val) {
+        var item = new AnakonCoordsSearchResult.AnakonItems.Item();
+        var code = new AnakonCoordsSearchResult.AnakonItems.Item.Code();
+        item._source = code;
+
+        var c = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Coords();
+        c.c = c_val;
+        code.df_255 = new ArrayList<>();
+        code.df_255.add(c);
+
+        var d = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
+        d.d = d_val;
+        code.df_034 = new ArrayList<>();
+        code.df_034.add(d);
+
+        var e = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
+        e.e = e_val;
+        code.df_034 = new ArrayList<>();
+        code.df_034.add(e);
+
+        var f = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
+        f.f = f_val;
+        code.df_034 = new ArrayList<>();
+        code.df_034.add(f);
+
+        var g = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
+        g.g = g_val;
+        code.df_034 = new ArrayList<>();
+        code.df_034.add(g);
+
+        return item;
     }
 }
