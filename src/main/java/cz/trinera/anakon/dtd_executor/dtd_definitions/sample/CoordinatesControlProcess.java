@@ -168,7 +168,7 @@ public class CoordinatesControlProcess implements Process {
         return filters;
     }
 
-    private void checkCoords(AnakonCoordsSearchResult.AnakonItems.Item item) {
+    private static void checkCoords(AnakonCoordsSearchResult.AnakonItems.Item item) {
         try {
             String coords = item._source.df_255.stream().findFirst().get().c;
 
@@ -195,12 +195,36 @@ public class CoordinatesControlProcess implements Process {
             Coords coords3 = Coords.parse(secondPair[0]);
             Coords coords4 = Coords.parse(secondPair[1]);
 
-            //System.out.println(coords1 + "," + coords2 + "," + coords3 + "," + coords4);
-            //check parted coords
+            try {
+                checkPartedCoords(item, coords1, coords2, coords3, coords4);
+            } catch (NullPointerException e) {
+                throw new IllegalArgumentException("Missing parted coordinates in df_034", e);
+            }
 
+        } catch (NullPointerException e) {
+            throw new IllegalArgumentException("Missing expression with coordinates in df_255", e);
+        }
+    }
+
+    private static void checkPartedCoords(AnakonCoordsSearchResult.AnakonItems.Item item, Coords coords1, Coords coords2, Coords coords3, Coords coords4) {
+        String parted_coords_d = item._source.df_034.stream().findFirst().get().d;
+        partedCoordMatch(coords1, parted_coords_d, "d");
+
+        String parted_coords_e = item._source.df_034.stream().findFirst().get().e;
+        partedCoordMatch(coords2, parted_coords_e, "e");
+
+        String parted_coords_f = item._source.df_034.stream().findFirst().get().f;
+        partedCoordMatch(coords3, parted_coords_f, "f");
 
         } catch (NullPointerException ex) {
             throw new IllegalArgumentException("Missing coordinates", ex);
+        String parted_coords_g = item._source.df_034.stream().findFirst().get().g;
+        partedCoordMatch(coords4, parted_coords_g, "g");
+    }
+
+    private static void partedCoordMatch(Coords coords, String parted_coords, String part) {
+        if (!parted_coords.equals(coords.toCode())){
+            throw new IllegalArgumentException("Coordinates mismatch on df_034 " + part + ": expected \"" + coords.toCode() + "\" but found \"" + parted_coords + "\"");
         }
     }
 
@@ -213,10 +237,10 @@ public class CoordinatesControlProcess implements Process {
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
             csvWriter.write("\"" + item._source.id + "\",\"" +
                     item._source.df_255.stream().findFirst().orElse(missing_coords).c + "\",\"" +
-                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).d) + "\",\"" +
-                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).e) + "\",\"" +
-                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).f) + "\",\"" +
-                    (item._source.df_034 == null ? missing_partial : item._source.df_034.stream().findFirst().orElse(missing_partial).g) + "\",\"" +
+                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).d) + "\",\"" +
+                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).e) + "\",\"" +
+                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).f) + "\",\"" +
+                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).g) + "\",\"" +
                     typeOfError + "\"" + "\n");
 
             csvWriter.flush();
@@ -331,7 +355,7 @@ public class CoordinatesControlProcess implements Process {
 
     //temporary tests for regex
     private static void test(){
-        var EN_extra_spaces = fillForTest("E15°20'17\"  --E  16°05'27\" /N   50°48'55\"--  N 50°30'23\"",null,null,null,null);
+        var EN_extra_spaces = fillForTest("E15°20'17\"  --E  16°05'27\" /N   50°48'55\"--  N 50°30'23\"","E0152017","E0160527","N0504855","N0503023");
         try {
             checkCoords(EN_extra_spaces);
             System.out.println("EN_extra_spaces: true");
@@ -352,7 +376,7 @@ public class CoordinatesControlProcess implements Process {
             checkCoords(empty);
             System.out.println("empty: false");
         } catch (IllegalArgumentException e) {
-            System.out.println("empty: " + e.getMessage().equals("Missing coordinates") + " " + e.getMessage());
+            System.out.println("empty: " + e.getMessage().equals("Missing expression with coordinates in df_255") + " " + e.getMessage());
         }
 
         var missing_divider = fillForTest("E0121806","E0121806","E0132511","N0502322","N0500416"); //nkc20162856337
@@ -387,20 +411,20 @@ public class CoordinatesControlProcess implements Process {
             System.out.println("CZ_has_brackets: false " + e.getMessage());
         }
 
-        var exp8 = fillForTest("",null,null,null,null);
+        var EN_parted_coords_mismatch = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504455","N0503023");
         try {
-            checkCoords(exp8);
+            checkCoords(EN_parted_coords_mismatch);
+            System.out.println("EN_parted_coords_mismatch: false");
         } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage().equals(""));
-            System.out.println(e.getMessage());
+            System.out.println("EN_parted_coords_mismatch:  " + e.getMessage().equals("Coordinates mismatch on df_034 f: expected \"N0504855\" but found \"N0504455\"") + " " + e.getMessage());
         }
 
-        var exp9 = fillForTest("",null,null,null,null);
+        var EN_missing_parted_coords = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017",null,"N0504455","N0503023");
         try {
-            checkCoords(exp9);
+            checkCoords(EN_missing_parted_coords);
+            System.out.println("EN_missing_parted_coords: false");
         } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage().equals(""));
-            System.out.println(e.getMessage());
+            System.out.println("EN_missing_parted_coords:  " + e.getMessage().equals("Missing parted coordinates in df_034") + " " + e.getMessage());
         }
     }
 
@@ -415,25 +439,16 @@ public class CoordinatesControlProcess implements Process {
         code.df_255 = new ArrayList<>();
         code.df_255.add(c);
 
-        var d = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
-        d.d = d_val;
         code.df_034 = new ArrayList<>();
-        code.df_034.add(d);
+        var coords = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
+        coords.d = d_val;
 
-        var e = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
-        e.e = e_val;
-        code.df_034 = new ArrayList<>();
-        code.df_034.add(e);
+        coords.e = e_val;
 
-        var f = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
-        f.f = f_val;
-        code.df_034 = new ArrayList<>();
-        code.df_034.add(f);
+        coords.f = f_val;
 
-        var g = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
-        g.g = g_val;
-        code.df_034 = new ArrayList<>();
-        code.df_034.add(g);
+        coords.g = g_val;
+        code.df_034.add(coords);
 
         return item;
     }
