@@ -54,9 +54,9 @@ public class CoordinatesControlProcess implements Process {
             public AnakonInfo total;
 
             static class Item {
-                public Code _source;
+                public ItemData _source;
 
-                static class Code {
+                static class ItemData {
                     public List<Coords> df_255;
                     public List<Parted_coords> df_034;
                     public String id;
@@ -136,7 +136,7 @@ public class CoordinatesControlProcess implements Process {
 
     private void process(BufferedWriter log, Params params, File outputFile) throws IOException, InterruptedException {
         HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build(); //default HTTP_2 causes GOAWAY
-        AnakonCoordsSearchResult result = null;
+        AnakonCoordsSearchResult result;
         int size = PAGE_SIZE;
         int from = 0;
 
@@ -146,16 +146,145 @@ public class CoordinatesControlProcess implements Process {
             String body = "{\"size\":" + size + ",\"track_total_hits\":true,\"from\":" + from + ",\"query\":{\"bool\":{\"must\":[" + String.join(",", filters) + "]}}}";
             result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
 
+            boolean success;
             for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
-                try {
-                    checkCoords(item);
-                } catch (Exception ex) {
-                    writeSearchResult(outputFile, log, item, ex.getMessage());
+                ItemProcessor processor = new ItemProcessor();
+                success = processor.process(item._source);
+                if (!success) {
+                    writeSearchResult(outputFile, log, item, processor.getErrorMessage());
                 }
             }
             
             from += size;
         } while (result.hits.total.value > from);
+    }
+
+    private static class ItemProcessor{
+        private final Map<Integer, List<String>> errors = new HashMap<>();
+        private Coords coords1;
+        private Coords coords2;
+        private Coords coords3;
+        private Coords coords4;
+
+        public boolean process(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
+            if (!checkKeysSize(item)){
+                return false;
+            }
+
+            for (int i = 0; i < item.df_255.size(); i++) {
+                if (!checkCoords(item, i)){
+                    return false;
+                }
+                if (!checkPartedCoords(item, i)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private boolean checkKeysSize(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
+            if (item.df_034 == null) {
+                errors.put(-1, List.of("Missing field df_034"));
+                return false;
+            }
+
+            if (item.df_255.size() != item.df_034.size()) {
+                errors.put(-1, List.of("The number of df_255s and df_034s do not match: something might be missing"));
+                return false;
+            }
+            return true;
+        }
+
+        private boolean checkCoords(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
+            errors.put(index, new ArrayList<>());
+            List<String> errorMessages = errors.get(index);
+
+            String coords;
+
+            coords = item.df_255.get(index).c;
+
+            if (coords == null) {
+                errorMessages.add("Missing expression with coordinates in df_255");
+                return false;
+            }
+
+            //needs to hand of warning
+            Matcher matcher = Pattern.compile("^[(\\[]*([^])]*)[])]*$").matcher(coords);
+            if (matcher.matches()) {
+                coords = matcher.group(1);
+            }
+
+            String[] parts = coords.split("/");
+            if (parts.length != 2) {
+                errorMessages.add("Wrong coordinates format: failed to split by '/'");
+                return false;
+            }
+
+            String[] firstPair = parts[0].split("--");
+            String[] secondPair = parts[1].split("--");
+
+            if (firstPair.length != 2 || secondPair.length != 2) {
+                errorMessages.add("Wrong coordinates format: failed to split by '--'");
+                return false;
+            }
+
+            try {
+                coords1 = Coords.parse(firstPair[0]);
+                coords2 = Coords.parse(firstPair[1]);
+                coords3 = Coords.parse(secondPair[0]);
+                coords4 = Coords.parse(secondPair[1]);
+            } catch (IllegalArgumentException e) {
+                errorMessages.add(index, e.getMessage());
+                return false;
+            }
+
+            return true;
+        }
+
+        private boolean checkPartedCoords(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
+            boolean success;
+            List<String> errorMessages = errors.get(index);
+
+
+            String parted_coords_d = item.df_034.get(index).d;
+            success = matchPartedCoord(coords1, parted_coords_d, "d", index);
+
+            String parted_coords_e = item.df_034.get(index).e;
+            success = success && matchPartedCoord(coords2, parted_coords_e, "e", index);
+
+            String parted_coords_f = item.df_034.get(index).f;
+            success = success && matchPartedCoord(coords3, parted_coords_f, "f", index);
+
+            String parted_coords_g = item.df_034.get(index).g;
+            success = success && matchPartedCoord(coords4, parted_coords_g, "g", index);
+
+
+            return success;
+        }
+
+        private boolean matchPartedCoord(Coords coords, String parted_coords, String part, int index) {
+            if (!Objects.equals(parted_coords, coords.toCode())){
+                errors.get(index).add("Coordinates mismatch on df_034 " + part + ": expected \"" + coords.toCode() + "\" but found \"" + parted_coords + "\"");
+                return false;
+            }
+            return true;
+        }
+
+        public String getErrorMessage(){
+            if (errors.containsKey(-1)){
+                 return String.join(",", errors.remove(-1));
+            }
+
+            StringBuilder errorMessage = new StringBuilder();
+            for (int index: errors.keySet()){
+                if (!errors.get(index).isEmpty()) {
+                    errorMessage.append("index: ").append(index).append(": ").append(String.join(";", errors.get(index))).append("| ");
+                }
+            }
+
+            return errorMessage.toString();
+        }
     }
 
     private static List<String> buildFilters(Params params) {
@@ -168,71 +297,11 @@ public class CoordinatesControlProcess implements Process {
         return filters;
     }
 
-    private static void checkCoords(AnakonCoordsSearchResult.AnakonItems.Item item) {
-        try {
-            String coords = item._source.df_255.stream().findFirst().get().c;
-
-            //needs to hand of warning
-            Matcher matcher = Pattern.compile("^[(\\[]*([^])]*)[])]*$").matcher(coords);
-            if (matcher.matches()) {
-                coords = matcher.group(1);
-            }
-
-            String[] parts = coords.split("/");
-            if (parts.length != 2) {
-                throw new IllegalArgumentException("Wrong coordinates format: failed to split by '/'");
-            }
-
-            String[] firstPair = parts[0].split("--");
-            String[] secondPair = parts[1].split("--");
-
-            if (firstPair.length != 2 || secondPair.length != 2) {
-                throw new IllegalArgumentException("Wrong coordinates format: failed to split by '--'");
-            }
-
-            Coords coords1 = Coords.parse(firstPair[0]);
-            Coords coords2 = Coords.parse(firstPair[1]);
-            Coords coords3 = Coords.parse(secondPair[0]);
-            Coords coords4 = Coords.parse(secondPair[1]);
-
-            try {
-                checkPartedCoords(item, coords1, coords2, coords3, coords4);
-            } catch (NullPointerException e) {
-                throw new IllegalArgumentException("Missing parted coordinates in df_034", e);
-            }
-
-        } catch (NullPointerException e) {
-            throw new IllegalArgumentException("Missing expression with coordinates in df_255", e);
-        }
-    }
-
-    private static void checkPartedCoords(AnakonCoordsSearchResult.AnakonItems.Item item, Coords coords1, Coords coords2, Coords coords3, Coords coords4) {
-        String parted_coords_d = item._source.df_034.stream().findFirst().get().d;
-        partedCoordMatch(coords1, parted_coords_d, "d");
-
-        String parted_coords_e = item._source.df_034.stream().findFirst().get().e;
-        partedCoordMatch(coords2, parted_coords_e, "e");
-
-        String parted_coords_f = item._source.df_034.stream().findFirst().get().f;
-        partedCoordMatch(coords3, parted_coords_f, "f");
-
-        } catch (NullPointerException ex) {
-            throw new IllegalArgumentException("Missing coordinates", ex);
-        String parted_coords_g = item._source.df_034.stream().findFirst().get().g;
-        partedCoordMatch(coords4, parted_coords_g, "g");
-    }
-
-    private static void partedCoordMatch(Coords coords, String parted_coords, String part) {
-        if (!parted_coords.equals(coords.toCode())){
-            throw new IllegalArgumentException("Coordinates mismatch on df_034 " + part + ": expected \"" + coords.toCode() + "\" but found \"" + parted_coords + "\"");
-        }
-    }
-
     private void writeSearchResult(File outputFile, BufferedWriter log, AnakonCoordsSearchResult.AnakonItems.Item item, String typeOfError) throws IOException {
         log.write("Marking item " + item._source.id + "\n");
 
-        var missing_coords = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Coords();
-        var missing_partial = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
+        var missing_coords = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Coords();
+        var missing_partial = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Parted_coords();
 
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
             csvWriter.write("\"" + item._source.id + "\",\"" +
@@ -304,6 +373,7 @@ public class CoordinatesControlProcess implements Process {
         public Coords(String cardinal, int degrees, int minutes, int seconds) {
             this.cardinal = normalizeCardinal(cardinal);
 
+            //these may be wrong CHECK!!
             if (degrees > 180){
                 throw new IllegalArgumentException("Degrees out of range");
             }
@@ -355,92 +425,55 @@ public class CoordinatesControlProcess implements Process {
 
     //temporary tests for regex
     private static void test(){
+        ItemProcessor processor = new ItemProcessor();
         var EN_extra_spaces = fillForTest("E15°20'17\"  --E  16°05'27\" /N   50°48'55\"--  N 50°30'23\"","E0152017","E0160527","N0504855","N0503023");
-        try {
-            checkCoords(EN_extra_spaces);
-            System.out.println("EN_extra_spaces: true");
-        } catch (IllegalArgumentException e) {
-            System.out.println("EN_extra_spaces: false " + e.getMessage());
-        }
+        System.out.println("EN_extra_spaces: " + processor.process(EN_extra_spaces) + "  -" + processor.getErrorMessage());
+
 
         var EN_extra_char = fillForTest("E 16°20´38\"--E 16°40´34\"./N 49°29´50\"--N 49°10´53\"",null,null,null,null);
-        try {
-            checkCoords(EN_extra_char);
-            System.out.println("EN_extra_char: false");
-        } catch (IllegalArgumentException e) {
-            System.out.println("EN_extra_char: " + e.getMessage().equals("Expression does not match pattern on: \"E 16°40´34\".\"") + " " + e.getMessage());
-        }
+        System.out.println("EN_extra_char: " + !processor.process(EN_extra_char) + "  -" + processor.getErrorMessage());
+
 
         var empty = fillForTest(null,null,null,null,null);
-        try {
-            checkCoords(empty);
-            System.out.println("empty: false");
-        } catch (IllegalArgumentException e) {
-            System.out.println("empty: " + e.getMessage().equals("Missing expression with coordinates in df_255") + " " + e.getMessage());
-        }
+            System.out.println("empty: " + !processor.process(empty) + "  -" + processor.getErrorMessage());
+
 
         var missing_divider = fillForTest("E0121806","E0121806","E0132511","N0502322","N0500416"); //nkc20162856337
-        try {
-            checkCoords(missing_divider);
-            System.out.println("missing_divider: false");
-        } catch (IllegalArgumentException e) {
-            System.out.println("missing_divider: " + e.getMessage().equals("Wrong coordinates format: failed to split by '/'") + " " + e.getMessage());
-        }
+        System.out.println("missing_divider: " + !processor.process(missing_divider) + "  -" + processor.getErrorMessage());
+
 
         var missing_dashes = fillForTest("E012/1806",null,null,null,null);
-        try {
-            checkCoords(missing_dashes);
-            System.out.println("missing_dashes: false");
-        } catch (IllegalArgumentException e) {
-            System.out.println("missing_dashes: " + e.getMessage().equals("Wrong coordinates format: failed to split by '--'") + " " + e.getMessage());
-        }
+        System.out.println("missing_dashes: " + !processor.process(missing_dashes) + "  -" + processor.getErrorMessage());
+
 
         var EN_mising_nums = fillForTest("E 16°20´8\"--E 16°40´34\"/N 49°29´50\"--N 49°10´53\"",null,null,null,null);
-        try {
-            checkCoords(EN_mising_nums);
-            System.out.println("EN_missing_nums: false");
-        } catch (IllegalArgumentException e) {
-            System.out.println("EN_missing_nums: " + e.getMessage().equals("Expression does not match pattern on: \"E 16°20´8\"\"") + " " + e.getMessage());
-        }
+        System.out.println("EN_missing_nums: " + !processor.process(EN_mising_nums) + "  -" + processor.getErrorMessage());
+
 
         var CZ_has_brackets = fillForTest("(006°07´01\" z.d.--010°38´05\" v.d./051°38´43\" s.š.--042°00´59\" s.š.)].",null,null,null,null);
-        try {
-            checkCoords(CZ_has_brackets);
-            System.out.println("CZ_has_brackets: true");
-        } catch (IllegalArgumentException e) {
-            System.out.println("CZ_has_brackets: false " + e.getMessage());
-        }
+        System.out.println("CZ_has_brackets: " + processor.process(CZ_has_brackets) + "  -" + processor.getErrorMessage());
+
 
         var EN_parted_coords_mismatch = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504455","N0503023");
-        try {
-            checkCoords(EN_parted_coords_mismatch);
-            System.out.println("EN_parted_coords_mismatch: false");
-        } catch (IllegalArgumentException e) {
-            System.out.println("EN_parted_coords_mismatch:  " + e.getMessage().equals("Coordinates mismatch on df_034 f: expected \"N0504855\" but found \"N0504455\"") + " " + e.getMessage());
-        }
+        System.out.println("EN_parted_coords_mismatch: " + !processor.process(EN_parted_coords_mismatch) + "  -" + processor.getErrorMessage());
+
 
         var EN_missing_parted_coords = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017",null,"N0504455","N0503023");
-        try {
-            checkCoords(EN_missing_parted_coords);
-            System.out.println("EN_missing_parted_coords: false");
-        } catch (IllegalArgumentException e) {
-            System.out.println("EN_missing_parted_coords:  " + e.getMessage().equals("Missing parted coordinates in df_034") + " " + e.getMessage());
-        }
+        System.out.println("EN_missing_parted_coords: " + !processor.process(EN_missing_parted_coords) + "  -" + processor.getErrorMessage());
+
     }
 
     //temporary
-    private static AnakonCoordsSearchResult.AnakonItems.Item fillForTest(String c_val, String d_val, String e_val, String f_val, String g_val) {
-        var item = new AnakonCoordsSearchResult.AnakonItems.Item();
-        var code = new AnakonCoordsSearchResult.AnakonItems.Item.Code();
-        item._source = code;
+    private static AnakonCoordsSearchResult.AnakonItems.Item.ItemData fillForTest(String c_val, String d_val, String e_val, String f_val, String g_val) {
+        var data = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData();
 
-        var c = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Coords();
+        var c = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Coords();
         c.c = c_val;
-        code.df_255 = new ArrayList<>();
-        code.df_255.add(c);
+        data.df_255 = new ArrayList<>();
+        data.df_255.add(c);
 
-        code.df_034 = new ArrayList<>();
-        var coords = new AnakonCoordsSearchResult.AnakonItems.Item.Code.Parted_coords();
+        data.df_034 = new ArrayList<>();
+        var coords = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Parted_coords();
         coords.d = d_val;
 
         coords.e = e_val;
@@ -448,8 +481,8 @@ public class CoordinatesControlProcess implements Process {
         coords.f = f_val;
 
         coords.g = g_val;
-        code.df_034.add(coords);
+        data.df_034.add(coords);
 
-        return item;
+        return data;
     }
 }
