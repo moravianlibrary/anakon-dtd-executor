@@ -29,6 +29,7 @@ public class CoordinatesControlProcess implements Process {
 
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
     private static final int PAGE_SIZE = 100;
     private static final String LIBRARY = "mzk";
     //temporary var to enable warnings
@@ -44,8 +45,8 @@ public class CoordinatesControlProcess implements Process {
             "(?<minutes>[0-9]{2})['`´]" +
             "(?<seconds>[0-9]{2})\"";
 
-    private static final Pattern patternEN = Pattern.compile("(?<cardinal>[ENSW])\\s" + coordinate);
-    private static final Pattern patternCZ = Pattern.compile(coordinate + "\\s(?<cardinal>v\\.d\\.|s\\.š\\.|j\\.š\\.|z\\.d\\.)");
+    private static final Pattern patternEN = Pattern.compile("\\s*(?<cardinal>[ENSW])\\s*" + coordinate + "\\s*");
+    private static final Pattern patternCZ = Pattern.compile("\\s*" + coordinate + "\\s*(?<cardinal>v\\.d\\.|s\\.š\\.|j\\.š\\.|z\\.d\\.)\\s*");
 
     private static class AnakonCoordsSearchResult {
 
@@ -182,7 +183,23 @@ public class CoordinatesControlProcess implements Process {
                 }
             }
 
+            removeEmptyMessages();
             return errors.isEmpty();
+        }
+
+        //to see if there are any warnings
+        private void removeEmptyMessages() {
+            List<Integer> emptyErrorIndex = new ArrayList<>();
+            for (int i: errors.keySet()){
+                var msg = errors.get(i);
+                if (msg.isEmpty()){
+                    emptyErrorIndex.add(i);
+                }
+            }
+
+            for (int i: emptyErrorIndex){
+                errors.remove(i);
+            }
         }
 
         private boolean checkKeysSize(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
@@ -278,7 +295,7 @@ public class CoordinatesControlProcess implements Process {
             StringBuilder errorMessage = new StringBuilder();
             for (int index: errors.keySet()){
                 if (!errors.get(index).isEmpty()) {
-                    errorMessage.append("index: ").append(index).append(": ").append(String.join("; ", errors.get(index))).append("| ");
+                    errorMessage.append("Index ").append(index).append(": ").append(String.join("; ", errors.get(index))).append("| ");
                 }
             }
 
