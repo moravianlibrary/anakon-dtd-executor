@@ -31,6 +31,8 @@ public class CoordinatesControlProcess implements Process {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final int PAGE_SIZE = 100;
     private static final String LIBRARY = "mzk";
+    //temporary var to enable warnings
+    private static final Boolean ENABLE_WARNINGS = true;
 
     public static class Params {
         public String anakon_base_url;
@@ -154,7 +156,7 @@ public class CoordinatesControlProcess implements Process {
                     writeSearchResult(outputFile, log, item, processor.getErrorMessage());
                 }
             }
-            
+
             from += size;
         } while (result.hits.total.value > from);
     }
@@ -180,7 +182,7 @@ public class CoordinatesControlProcess implements Process {
                 }
             }
 
-            return true;
+            return errors.isEmpty();
         }
 
         private boolean checkKeysSize(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
@@ -209,11 +211,11 @@ public class CoordinatesControlProcess implements Process {
                 return false;
             }
 
-            //needs to hand of warning
-            Matcher matcher = Pattern.compile("^[(\\[]*([^])]*)[])]*$").matcher(coords);
-            if (matcher.matches()) {
-                coords = matcher.group(1);
+            Matcher matcher = Pattern.compile("(^\\W+|(?<=[šd]\\.|\")\\W+$)").matcher(coords);
+            while (matcher.find() && ENABLE_WARNINGS) {
+                errorMessages.add("[Warning]: Extra characters \"" + matcher.group() + "\" around the expression");
             }
+            coords = matcher.replaceAll("");
 
             String[] parts = coords.split("/");
             if (parts.length != 2) {
@@ -244,8 +246,6 @@ public class CoordinatesControlProcess implements Process {
 
         private boolean checkPartedCoords(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
             boolean success;
-            List<String> errorMessages = errors.get(index);
-
 
             String parted_coords_d = item.df_034.get(index).d;
             success = matchPartedCoord(coords1, parted_coords_d, "d", index);
@@ -258,7 +258,6 @@ public class CoordinatesControlProcess implements Process {
 
             String parted_coords_g = item.df_034.get(index).g;
             success = success && matchPartedCoord(coords4, parted_coords_g, "g", index);
-
 
             return success;
         }
@@ -279,7 +278,7 @@ public class CoordinatesControlProcess implements Process {
             StringBuilder errorMessage = new StringBuilder();
             for (int index: errors.keySet()){
                 if (!errors.get(index).isEmpty()) {
-                    errorMessage.append("index: ").append(index).append(": ").append(String.join(";", errors.get(index))).append("| ");
+                    errorMessage.append("index: ").append(index).append(": ").append(String.join("; ", errors.get(index))).append("| ");
                 }
             }
 
@@ -451,7 +450,7 @@ public class CoordinatesControlProcess implements Process {
 
 
         var CZ_has_brackets = fillForTest("(006°07´01\" z.d.--010°38´05\" v.d./051°38´43\" s.š.--042°00´59\" s.š.)].",null,null,null,null);
-        System.out.println("CZ_has_brackets: " + processor.process(CZ_has_brackets) + "  -" + processor.getErrorMessage());
+        System.out.println("CZ_has_brackets: " + !processor.process(CZ_has_brackets) + "  -" + processor.getErrorMessage());
 
 
         var EN_parted_coords_mismatch = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504455","N0503023");
@@ -475,11 +474,8 @@ public class CoordinatesControlProcess implements Process {
         data.df_034 = new ArrayList<>();
         var coords = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Parted_coords();
         coords.d = d_val;
-
         coords.e = e_val;
-
         coords.f = f_val;
-
         coords.g = g_val;
         data.df_034.add(coords);
 
