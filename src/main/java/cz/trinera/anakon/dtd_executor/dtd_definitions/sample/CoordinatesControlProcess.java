@@ -414,20 +414,25 @@ public class CoordinatesControlProcess implements Process {
 
         public Coords(String cardinal, int degrees, int minutes, int seconds) {
             this.cardinal = normalizeCardinal(cardinal);
+            List<String> latitude = List.of("N", "S");
+            List<String> longitude = List.of("E", "W");
 
-            //these may be wrong CHECK!!
-            if (degrees > 180){
-                throw new IllegalArgumentException("Degrees out of range");
+            if (latitude.contains(this.cardinal) && degrees > 90){
+                throw new IllegalArgumentException("Degrees out of range: " + degrees);
+            }
+
+            if (longitude.contains(this.cardinal) && degrees > 180){
+                throw new IllegalArgumentException("Degrees out of range: " + degrees);
             }
             this.degrees = degrees;
 
             if (minutes > 59){
-                throw new IllegalArgumentException("Minutes out of range");
+                throw new IllegalArgumentException("Minutes out of range: " + minutes);
             }
             this.minutes = minutes;
 
             if (seconds > 59){
-                throw new IllegalArgumentException("Seconds out of range");
+                throw new IllegalArgumentException("Seconds out of range: " + seconds);
             }
             this.seconds = seconds;
         }
