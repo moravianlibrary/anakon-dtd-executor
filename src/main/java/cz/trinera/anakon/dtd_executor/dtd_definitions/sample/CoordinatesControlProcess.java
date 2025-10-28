@@ -33,7 +33,7 @@ public class CoordinatesControlProcess implements Process {
     private static final int PAGE_SIZE = 100;
     private static final String LIBRARY = "mzk";
     //temporary var to enable warnings
-    private static final Boolean ENABLE_WARNINGS = true;
+    private static final Boolean ENABLE_WARNINGS = false;
 
     public static class Params {
         public String anakon_base_url;
@@ -148,7 +148,7 @@ public class CoordinatesControlProcess implements Process {
         do {
             String body = "{\"size\":" + size + ",\"track_total_hits\":true,\"from\":" + from + ",\"query\":{\"bool\":{\"must\":[" + String.join(",", filters) + "]}}}";
             result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
-            log.write("Processing: " + from + "-" + (from + size) + "/" + result.hits.total.value + "\n");
+            log.write("Processing: " + from + "-" + (from + size - 1) + "/" + result.hits.total.value + "\n");
 
             for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
                 String errMessage = checkKeysSize(item._source);
@@ -161,7 +161,7 @@ public class CoordinatesControlProcess implements Process {
                     ItemProcessor processor = new ItemProcessor();
                     boolean success = processor.process(item._source, i);
                     if (!success) {
-                        writeSearchResult(outputFile, log, item, processor.getErrorMessage(), i);
+                        writeSearchResult(outputFile, log, item, processor.getErrorMessage(i), i);
                     }
                 }
             }
@@ -186,7 +186,7 @@ public class CoordinatesControlProcess implements Process {
     }
 
     private static class ItemProcessor{
-        private final Map<Integer, List<String>> errors = new HashMap<>();
+        private final List<String> errors = new ArrayList<>();
         private Coords coords1;
         private Coords coords2;
         private Coords coords3;
@@ -205,7 +205,6 @@ public class CoordinatesControlProcess implements Process {
                 return false;
             }
 
-            removeEmptyMessages();
             return errors.isEmpty();
         }
 
@@ -217,43 +216,23 @@ public class CoordinatesControlProcess implements Process {
                     item.df_034.get(index).g == null;
         }
 
-        //to see if there are any warnings
-        private void removeEmptyMessages() {
-            List<Integer> emptyErrorIndex = new ArrayList<>();
-            for (int i: errors.keySet()){
-                var msg = errors.get(i);
-                if (msg.isEmpty()){
-                    emptyErrorIndex.add(i);
-                }
-            }
-
-            for (int i: emptyErrorIndex){
-                errors.remove(i);
-            }
-        }
-
         private boolean checkCoords(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
-            errors.put(index, new ArrayList<>());
-            List<String> errorMessages = errors.get(index);
-
-            String coords;
-
-            coords = item.df_255.get(index).c;
+            String coords = item.df_255.get(index).c;
 
             if (coords == null) {
-                errorMessages.add("Missing expression with coordinates in df_255");
+                errors.add("Missing expression with coordinates in df_255");
                 return false;
             }
 
             Matcher matcher = Pattern.compile("(^\\W+|(?<=[šd]\\.|\")\\W+$)").matcher(coords);
             while (matcher.find() && ENABLE_WARNINGS) {
-                errorMessages.add("[Warning]: Extra characters \"" + matcher.group() + "\" around the expression");
+                errors.add("[Warning]: Extra characters \"" + matcher.group() + "\" around the expression");
             }
             coords = matcher.replaceAll("");
 
             String[] parts = coords.split("/");
             if (parts.length != 2) {
-                errorMessages.add("Wrong coordinates format: failed to split by '/'");
+                errors.add("Wrong coordinates format: failed to split by '/'");
                 return false;
             }
 
@@ -261,62 +240,50 @@ public class CoordinatesControlProcess implements Process {
             String[] secondPair = parts[1].split("--");
 
             if (firstPair.length != 2 || secondPair.length != 2) {
-                errorMessages.add("Wrong coordinates format: failed to split by '--'");
+                errors.add("Wrong coordinates format: failed to split by '--'");
                 return false;
             }
 
-            try {
-                coords1 = Coords.parse(firstPair[0]);
-                coords2 = Coords.parse(firstPair[1]);
-                coords3 = Coords.parse(secondPair[0]);
-                coords4 = Coords.parse(secondPair[1]);
-            } catch (IllegalArgumentException e) {
-                errorMessages.add(e.getMessage());
-                return false;
-            }
+            coords1 = new Coords().parse(firstPair[0]);
+            errors.addAll(coords1.getErrors());
+            coords2 = new Coords().parse(firstPair[1]);
+            errors.addAll(coords2.getErrors());
+            coords3 = new Coords().parse(secondPair[0]);
+            errors.addAll(coords3.getErrors());
+            coords4 = new Coords().parse(secondPair[1]);
+            errors.addAll(coords4.getErrors());
 
-            return true;
+            return errors.isEmpty();
         }
 
         private boolean checkPartedCoords(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
-            boolean success;
-
             String parted_coords_d = item.df_034.get(index).d;
-            success = matchPartedCoord(coords1, parted_coords_d, "d", index);
+            matchPartedCoord(coords1, parted_coords_d, "d", index);
 
             String parted_coords_e = item.df_034.get(index).e;
-            success = success && matchPartedCoord(coords2, parted_coords_e, "e", index);
+            matchPartedCoord(coords2, parted_coords_e, "e", index);
 
             String parted_coords_f = item.df_034.get(index).f;
-            success = success && matchPartedCoord(coords3, parted_coords_f, "f", index);
+            matchPartedCoord(coords3, parted_coords_f, "f", index);
 
             String parted_coords_g = item.df_034.get(index).g;
-            success = success && matchPartedCoord(coords4, parted_coords_g, "g", index);
+            matchPartedCoord(coords4, parted_coords_g, "g", index);
 
-            return success;
+            return errors.isEmpty();
         }
 
-        private boolean matchPartedCoord(Coords coords, String parted_coords, String part, int index) {
+        private void matchPartedCoord(Coords coords, String parted_coords, String part, int index) {
             if (!Objects.equals(parted_coords, coords.toCode())){
-                errors.get(index).add("Coordinates mismatch on df_034 " + part + ": expected \"" + coords.toCode() + "\" but found \"" + parted_coords + "\"");
-                return false;
+                errors.add("Coordinates mismatch on df_034 " + part + ": expected \"" + coords.toCode() + "\" but found \"" + parted_coords + "\"");
             }
-            return true;
         }
 
-        public String getErrorMessage(){
-            if (errors.containsKey(-1)){
-                 return String.join(",", errors.remove(-1));
+        public String getErrorMessage(int index){
+            if (!errors.isEmpty()) {
+                return "Index " + index + ": " + String.join("; ", errors);
             }
 
-            StringBuilder errorMessage = new StringBuilder();
-            for (int index: errors.keySet()){
-                if (!errors.get(index).isEmpty()) {
-                    errorMessage.append("Index ").append(index).append(": ").append(String.join("; ", errors.get(index))).append("| ");
-                }
-            }
-
-            return errorMessage.toString();
+            return null;
         }
     }
 
@@ -399,11 +366,12 @@ public class CoordinatesControlProcess implements Process {
     }
 
 
-    static class Coords {
-        String cardinal;
-        int degrees;
-        int minutes;
-        int seconds;
+    private static class Coords {
+        private String cardinal;
+        private int degrees;
+        private int minutes;
+        private int seconds;
+        private final List<String> errors = new ArrayList<>();
 
         static final Map<String, String> CARDINAL_MAP = Map.of(
                 "v.d.", "E",
@@ -412,29 +380,7 @@ public class CoordinatesControlProcess implements Process {
                 "z.d.", "W"
         );
 
-        public Coords(String cardinal, int degrees, int minutes, int seconds) {
-            this.cardinal = normalizeCardinal(cardinal);
-            List<String> latitude = List.of("N", "S");
-            List<String> longitude = List.of("E", "W");
-
-            if (latitude.contains(this.cardinal) && degrees > 90){
-                throw new IllegalArgumentException("Degrees out of range: " + degrees);
-            }
-
-            if (longitude.contains(this.cardinal) && degrees > 180){
-                throw new IllegalArgumentException("Degrees out of range: " + degrees);
-            }
-            this.degrees = degrees;
-
-            if (minutes > 59){
-                throw new IllegalArgumentException("Minutes out of range: " + minutes);
-            }
-            this.minutes = minutes;
-
-            if (seconds > 59){
-                throw new IllegalArgumentException("Seconds out of range: " + seconds);
-            }
-            this.seconds = seconds;
+        public Coords() {
         }
 
         private static String normalizeCardinal(String cardinal) {
@@ -444,14 +390,15 @@ public class CoordinatesControlProcess implements Process {
             return cardinal;
         }
 
-        public static Coords parse(String inputData) {
+        public Coords parse(String inputData) {
             //needs to allow white space
             Matcher matcher = patternEN.matcher(inputData);
             if (!matcher.matches()) {
                 matcher = patternCZ.matcher(inputData);
             }
             if (!matcher.matches()) {
-                throw new IllegalArgumentException("Expression does not match pattern on: \"" + inputData + "\"");
+                errors.add("Expression does not match pattern on: \"" + inputData + "\"");
+                return this;
             }
 
             int degrees = Integer.parseInt(matcher.group("degrees"));
@@ -459,12 +406,43 @@ public class CoordinatesControlProcess implements Process {
             int seconds = Integer.parseInt(matcher.group("seconds"));
             String cardinal = matcher.group("cardinal");
 
-            return new Coords(cardinal, degrees, minutes, seconds);
+            createCoords(cardinal, degrees, minutes, seconds);
+            return this;
+        }
+
+        private void createCoords(String cardinal, int degrees, int minutes, int seconds) {
+            this.cardinal = normalizeCardinal(cardinal);
+            List<String> latitude = List.of("N", "S");
+            List<String> longitude = List.of("E", "W");
+
+            if (latitude.contains(this.cardinal) && degrees > 90){
+                errors.add("Degrees out of range: " + degrees);
+            }
+
+            if (longitude.contains(this.cardinal) && degrees > 180){
+                errors.add("Degrees out of range: " + degrees);
+            }
+            this.degrees = degrees;
+
+            if (minutes > 59){
+                errors.add("Minutes out of range: " + minutes);
+            }
+            this.minutes = minutes;
+
+            if (seconds > 59){
+                errors.add("Seconds out of range: " + seconds);
+            }
+            this.seconds = seconds;
+
         }
 
         public String toCode() {
             DecimalFormat df = new DecimalFormat("0000000");
             return cardinal + df.format(seconds + minutes * 100L + degrees * 10000L);
+        }
+
+        public List<String> getErrors() {
+            return errors;
         }
     }
 
