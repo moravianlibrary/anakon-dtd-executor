@@ -23,6 +23,9 @@ import org.json.JSONObject;
 
 import static java.nio.file.StandardOpenOption.APPEND;
 
+//mzk:MZK01:001483797
+//mzk:MZK01:nkc20203177803
+
 public class CoordinatesControlProcess implements Process {
 
     private static final int PAUSE_BETWEEN_VOLUME_REQUESTS_MS = 300;
@@ -35,9 +38,14 @@ public class CoordinatesControlProcess implements Process {
     //temporary var to enable warnings
     private static final Boolean ENABLE_WARNINGS = false;
 
+    public enum BaseCode {
+        MZK01,
+        MZK03
+    }
+
     public static class Params {
         public String anakon_base_url;
-        public String dig_lib_base_code;
+        public BaseCode dig_lib_base_code;
     }
 
     private static final String coordinate =
@@ -93,7 +101,6 @@ public class CoordinatesControlProcess implements Process {
         JSONObject input = new JSONObject();
         input.put("anakon_base_url", anakonBaseUrl);
         input.put("dig_lib_base_code", dig_lib_code);
-        //test();
         new CoordinatesControlProcess().run(
                 UUID.randomUUID(),
                 "coordinates_control",
@@ -121,10 +128,12 @@ public class CoordinatesControlProcess implements Process {
 
                 Params params = parseInput(inputData);
 
+                Properties config = loadConfig(logWriter, configFile);
+
                 File outputFile = new File(outputDir, "export.csv");
                 writeCsvHeader(outputFile);
 
-                process(logWriter, params, outputFile);
+                process(logWriter, params, outputFile, config);
 
                 logWriter.write("Exported data to " + outputFile.getName() + "\n");
 
@@ -137,7 +146,33 @@ public class CoordinatesControlProcess implements Process {
         }
     }
 
-    private void process(BufferedWriter log, Params params, File outputFile) throws IOException, InterruptedException {
+    private Properties loadConfig(BufferedWriter logWriter, File configFile) throws IOException {
+        if (configFile == null || !configFile.exists()) {
+            throw new IllegalArgumentException("No configuration file provided\n");
+        }
+
+        logWriter.write("Loading config file: " + configFile.getAbsolutePath() + "\n");
+        Properties properties = new Properties();
+        properties.load(Files.newInputStream(configFile.toPath()));
+
+        if (!properties.containsKey("username") || !properties.containsKey("password")) {
+            throw new IllegalArgumentException("Missing username or password in config file\n");
+        }
+
+        logWriter.write("Configuration properties:\n");
+        for (String key : properties.stringPropertyNames()) {
+            String value = properties.getProperty(key);
+            if (key.equals("password")) {
+                logWriter.write(key + "=" + "*".repeat(value.length()) + "\n");
+            } else {
+                logWriter.write(key + "=" + value + "\n");
+            }
+        }
+
+        return properties;
+    }
+
+    private void process(BufferedWriter log, Params params, File outputFile, Properties config) throws IOException, InterruptedException {
         HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build(); //default HTTP_2 causes GOAWAY
         AnakonCoordsSearchResult result;
         int size = PAGE_SIZE;
@@ -147,7 +182,7 @@ public class CoordinatesControlProcess implements Process {
 
         do {
             String body = "{\"size\":" + size + ",\"track_total_hits\":true,\"from\":" + from + ",\"query\":{\"bool\":{\"must\":[" + String.join(",", filters) + "]}}}";
-            result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
+            result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body, config);
             log.write("Processing: " + from + "-" + (from + size - 1) + "/" + result.hits.total.value + "\n");
 
             for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
@@ -343,9 +378,8 @@ public class CoordinatesControlProcess implements Process {
         return params;
     }
 
-    private static <T> T postRequest(HttpClient httpClient, Class<T> resultClass, URI uri, String body) throws IOException, InterruptedException {
-        String authHeader = null;
-        //authHeader = httpBasicAuth("username", "password");
+    private static <T> T postRequest(HttpClient httpClient, Class<T> resultClass, URI uri, String body, Properties config) throws IOException, InterruptedException {
+        String authHeader = httpBasicAuth(config.getProperty("username"), config.getProperty("password"));
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("Authorization", authHeader)
@@ -444,73 +478,5 @@ public class CoordinatesControlProcess implements Process {
         public List<String> getErrors() {
             return errors;
         }
-    }
-
-
-/*
-    //temporary tests for regex
-    private static void test(){
-        ItemProcessor processor = new ItemProcessor();
-        var EN_extra_spaces = fillForTest("E15°20'17\"  --E  16°05'27\" /N   50°48'55\"--  N 50°30'23\"","E0152017","E0160527","N0504855","N0503023");
-        System.out.println("EN_extra_spaces: " + processor.process(EN_extra_spaces) + "  -" + processor.getErrorMessage());
-
-
-        var EN_extra_char = fillForTest("E 16°20´38\"--E 16°40´34\"./N 49°29´50\"--N 49°10´53\"",null,null,null,null);
-        System.out.println("EN_extra_char: " + !processor.process(EN_extra_char) + "  -" + processor.getErrorMessage());
-
-
-        var empty = fillForTest(null,null,null,null,null);
-            System.out.println("empty: " + !processor.process(empty) + "  -" + processor.getErrorMessage());
-
-
-        var missing_divider = fillForTest("E0121806","E0121806","E0132511","N0502322","N0500416"); //nkc20162856337
-        System.out.println("missing_divider: " + !processor.process(missing_divider) + "  -" + processor.getErrorMessage());
-
-
-        var missing_dashes = fillForTest("E012/1806",null,null,null,null);
-        System.out.println("missing_dashes: " + !processor.process(missing_dashes) + "  -" + processor.getErrorMessage());
-
-
-        var EN_mising_nums = fillForTest("E 16°20´8\"--E 16°40´34\"/N 49°29´50\"--N 49°10´53\"",null,null,null,null);
-        System.out.println("EN_missing_nums: " + !processor.process(EN_mising_nums) + "  -" + processor.getErrorMessage());
-
-
-        var CZ_has_brackets = fillForTest("(006°07´01\" z.d.--010°38´05\" v.d./051°38´43\" s.š.--042°00´59\" s.š.)].",null,null,null,null);
-        System.out.println("CZ_has_brackets: " + !processor.process(CZ_has_brackets) + "  -" + processor.getErrorMessage());
-
-
-        var EN_parted_coords_mismatch = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504455","N0503023");
-        System.out.println("EN_parted_coords_mismatch: " + !processor.process(EN_parted_coords_mismatch) + "  -" + processor.getErrorMessage());
-
-
-        var EN_missing_parted_coords = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017",null,"N0504455","N0503023");
-        System.out.println("EN_missing_parted_coords: " + !processor.process(EN_missing_parted_coords) + "  -" + processor.getErrorMessage());
-
-        var EN_wrong_degress_latitude = fillForTest("E12°20'17\"--E 16°05'27\"/N 91°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504855","N0503023");
-        System.out.println("EN_wrong_degress_latitude: " + !processor.process(EN_wrong_degress_latitude) + "  -" + processor.getErrorMessage());
-
-        var EN_wrong_degress_longitude = fillForTest("E15°20'17\"--E 200°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504855","N0503023");
-        System.out.println("EN_wrong_degress_longitude: " + !processor.process(EN_wrong_degress_longitude) + "  -" + processor.getErrorMessage());
-
-    }*/
-
-    //temporary
-    private static AnakonCoordsSearchResult.AnakonItems.Item.ItemData fillForTest(String c_val, String d_val, String e_val, String f_val, String g_val) {
-        var data = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData();
-
-        var c = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Coords();
-        c.c = c_val;
-        data.df_255 = new ArrayList<>();
-        data.df_255.add(c);
-
-        data.df_034 = new ArrayList<>();
-        var coords = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Parted_coords();
-        coords.d = d_val;
-        coords.e = e_val;
-        coords.f = f_val;
-        coords.g = g_val;
-        data.df_034.add(coords);
-
-        return data;
     }
 }
