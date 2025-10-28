@@ -92,7 +92,7 @@ public class CoordinatesControlProcess implements Process {
         String dig_lib_code = "MZK01";
         JSONObject input = new JSONObject();
         input.put("anakon_base_url", anakonBaseUrl);
-        input.put("dig_lib_code", dig_lib_code);
+        input.put("dig_lib_base_code", dig_lib_code);
         //test();
         new CoordinatesControlProcess().run(
                 UUID.randomUUID(),
@@ -148,18 +148,41 @@ public class CoordinatesControlProcess implements Process {
         do {
             String body = "{\"size\":" + size + ",\"track_total_hits\":true,\"from\":" + from + ",\"query\":{\"bool\":{\"must\":[" + String.join(",", filters) + "]}}}";
             result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body);
+            log.write("Processing: " + from + "-" + (from + size) + "/" + result.hits.total.value + "\n");
 
-            boolean success;
             for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
-                ItemProcessor processor = new ItemProcessor();
-                success = processor.process(item._source);
-                if (!success) {
-                    writeSearchResult(outputFile, log, item, processor.getErrorMessage());
+                String errMessage = checkKeysSize(item._source);
+                if (errMessage != null) {
+                    writeSearchResult(outputFile, log, item, errMessage, -1);
+                    continue;
+                }
+
+                for (int i = 0; i < item._source.df_255.size(); i++) {
+                    ItemProcessor processor = new ItemProcessor();
+                    boolean success = processor.process(item._source, i);
+                    if (!success) {
+                        writeSearchResult(outputFile, log, item, processor.getErrorMessage(), i);
+                    }
                 }
             }
 
             from += size;
         } while (result.hits.total.value > from);
+    }
+
+    private static String checkKeysSize(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
+        if (item.df_255 == null) {
+            return "Missing field df_255";
+        }
+
+        if (item.df_034 == null) {
+            return "Missing field df_034";
+        }
+
+        if (item.df_255.size() != item.df_034.size()) {
+            return "The number of df_255s and df_034s do not match: something might be missing";
+        }
+        return null;
     }
 
     private static class ItemProcessor{
@@ -169,22 +192,29 @@ public class CoordinatesControlProcess implements Process {
         private Coords coords3;
         private Coords coords4;
 
-        public boolean process(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
-            if (!checkKeysSize(item)){
+        public boolean process(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
+            if (checkIfAbsent(item, index)) {
+                return true;
+            }
+
+            if (!checkCoords(item, index)){
                 return false;
             }
 
-            for (int i = 0; i < item.df_255.size(); i++) {
-                if (!checkCoords(item, i)){
-                    return false;
-                }
-                if (!checkPartedCoords(item, i)) {
-                    return false;
-                }
+            if (!checkPartedCoords(item, index)) {
+                return false;
             }
 
             removeEmptyMessages();
             return errors.isEmpty();
+        }
+
+        private boolean checkIfAbsent(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
+            return item.df_255.get(index).c == null &&
+                    item.df_034.get(index).d == null &&
+                    item.df_034.get(index).e == null &&
+                    item.df_034.get(index).f == null &&
+                    item.df_034.get(index).g == null;
         }
 
         //to see if there are any warnings
@@ -200,19 +230,6 @@ public class CoordinatesControlProcess implements Process {
             for (int i: emptyErrorIndex){
                 errors.remove(i);
             }
-        }
-
-        private boolean checkKeysSize(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
-            if (item.df_034 == null) {
-                errors.put(-1, List.of("Missing field df_034"));
-                return false;
-            }
-
-            if (item.df_255.size() != item.df_034.size()) {
-                errors.put(-1, List.of("The number of df_255s and df_034s do not match: something might be missing"));
-                return false;
-            }
-            return true;
         }
 
         private boolean checkCoords(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item, int index) {
@@ -254,7 +271,7 @@ public class CoordinatesControlProcess implements Process {
                 coords3 = Coords.parse(secondPair[0]);
                 coords4 = Coords.parse(secondPair[1]);
             } catch (IllegalArgumentException e) {
-                errorMessages.add(index, e.getMessage());
+                errorMessages.add(e.getMessage());
                 return false;
             }
 
@@ -309,24 +326,33 @@ public class CoordinatesControlProcess implements Process {
         if (params.dig_lib_base_code != null) {
             filters.add("{\"term\": {\"base.keyword\": \"" + params.dig_lib_base_code + "\"}}"); //base filter
         }
-        filters.add("{\"nested\": {\"path\": \"df_255\", \"query\": {\"bool\": {\"must\": [{\"exists\": {\"field\": \"df_255.c.keyword\"}}]}}}}"); //df_255.c filter
+        filters.add("{\"bool\":{\"should\":[{\"nested\":{\"path\":\"df_255\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_255.c.keyword\"}}]}}}},{\"bool\":{\"should\":[{\"nested\":{\"path\":\"df_034\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_034.d.keyword\"}}]}}}},{\"nested\":{\"path\":\"df_034\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_034.e.keyword\"}}]}}}},{\"nested\":{\"path\":\"df_034\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_034.f.keyword\"}}]}}}},{\"nested\":{\"path\":\"df_034\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"df_034.g.keyword\"}}]}}}}],\"minimum_should_match\":1}}],\"minimum_should_match\":1}}"); //df_255.c filter
         return filters;
     }
 
-    private void writeSearchResult(File outputFile, BufferedWriter log, AnakonCoordsSearchResult.AnakonItems.Item item, String typeOfError) throws IOException {
-        log.write("Marking item " + item._source.id + "\n");
-
+    private void writeSearchResult(File outputFile, BufferedWriter log, AnakonCoordsSearchResult.AnakonItems.Item item, String typeOfError, int index) throws IOException {
         var missing_coords = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Coords();
         var missing_partial = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Parted_coords();
 
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
-            csvWriter.write("\"" + item._source.id + "\",\"" +
-                    item._source.df_255.stream().findFirst().orElse(missing_coords).c + "\",\"" +
-                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).d) + "\",\"" +
-                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).e) + "\",\"" +
-                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).f) + "\",\"" +
-                    (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).g) + "\",\"" +
-                    typeOfError + "\"" + "\n");
+            if (index == -1) {
+                csvWriter.write("\"" + item._source.id + "\",\"" +
+                        (item._source.df_255 == null ? null : item._source.df_255.stream().findFirst().orElse(missing_coords).c) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).d) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).e) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).f) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).g) + "\",\"" +
+                        typeOfError + "\"" + "\n");
+
+            } else {
+                csvWriter.write("\"" + item._source.id + "\",\"" +
+                        (item._source.df_255 == null ? null : item._source.df_255.get(index).c) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.get(index).d) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.get(index).e) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.get(index).f) + "\",\"" +
+                        (item._source.df_034 == null ? null : item._source.df_034.get(index).g) + "\",\"" +
+                        typeOfError + "\"" + "\n");
+            }
 
             csvWriter.flush();
         }
@@ -438,7 +464,7 @@ public class CoordinatesControlProcess implements Process {
     }
 
 
-
+/*
     //temporary tests for regex
     private static void test(){
         ItemProcessor processor = new ItemProcessor();
@@ -477,7 +503,13 @@ public class CoordinatesControlProcess implements Process {
         var EN_missing_parted_coords = fillForTest("E 15°20'17\"--E 16°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017",null,"N0504455","N0503023");
         System.out.println("EN_missing_parted_coords: " + !processor.process(EN_missing_parted_coords) + "  -" + processor.getErrorMessage());
 
-    }
+        var EN_wrong_degress_latitude = fillForTest("E12°20'17\"--E 16°05'27\"/N 91°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504855","N0503023");
+        System.out.println("EN_wrong_degress_latitude: " + !processor.process(EN_wrong_degress_latitude) + "  -" + processor.getErrorMessage());
+
+        var EN_wrong_degress_longitude = fillForTest("E15°20'17\"--E 200°05'27\"/N 50°48'55\"--N 50°30'23\"","E0152017","E0160527","N0504855","N0503023");
+        System.out.println("EN_wrong_degress_longitude: " + !processor.process(EN_wrong_degress_longitude) + "  -" + processor.getErrorMessage());
+
+    }*/
 
     //temporary
     private static AnakonCoordsSearchResult.AnakonItems.Item.ItemData fillForTest(String c_val, String d_val, String e_val, String f_val, String g_val) {
