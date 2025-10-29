@@ -134,10 +134,18 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
                 File outputFile = new File(outputDir, "export.csv");
                 writeCsvHeader(outputFile);
 
-                process(logWriter, params, outputFile, config);
+                logWriter.write("\n");
+                Counters counters = process(logWriter, params, outputFile, config);
+
+                logWriter.write("\n");
+                logWriter.write("Processed records summary:\n");
+                logWriter.write("--------------------------\n");
+                logWriter.write("Items total:       " + counters.total + "\n");
+                logWriter.write("Items with errors: " + counters.errors + "\n");
+                double errorRatio = counters.total == 0 ? 0.0 : ((double) counters.errors / (double) counters.total) * 100.0;
+                logWriter.write("Error ratio:       " + String.format("%.2f %%\n", errorRatio));
 
                 logWriter.write("Exported data to " + outputFile.getName() + "\n");
-
             } catch (Exception e) {
                 logWriter.write("Error: " + e.getMessage() + "\n");
                 throw e;
@@ -179,18 +187,18 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
         return properties;
     }
 
-    private void process(BufferedWriter log, Params params, File outputFile, Properties config) throws IOException, InterruptedException {
+    private Counters process(BufferedWriter log, Params params, File outputFile, Properties config) throws IOException, InterruptedException {
         HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build(); //default HTTP_2 causes GOAWAY
         AnakonCoordsSearchResult result;
         int size = PAGE_SIZE;
         int from = 0;
 
         List<String> filters = buildFilters(params);
+        Counters counters = new Counters();
 
         do {
             String body = "{\"size\":" + size + ",\"track_total_hits\":true,\"from\":" + from + ",\"query\":{\"bool\":{\"must\":[" + String.join(",", filters) + "]}}}";
             result = postAnakonSearchRequest(httpClient, AnakonCoordsSearchResult.class, body, config);
-            log.write("Processing: " + from + "-" + (from + size - 1) + "/" + result.hits.total.value + "\n");
 
             for (AnakonCoordsSearchResult.AnakonItems.Item item : result.hits.hits) {
                 String errMessage = checkKeysSize(item._source);
@@ -204,12 +212,16 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
                     boolean success = processor.process(item._source, i);
                     if (!success) {
                         writeSearchResult(outputFile, log, item, processor.getErrorMessage(i), i);
+                        counters.errors += 1;
                     }
                 }
             }
-
+            counters.total = result.hits.total.value;
+            counters.processed += result.hits.hits.size();
+            log.write(String.format("Processed %d/%d records (%d errors)\n", counters.processed, counters.total, counters.errors));
             from += size;
         } while (result.hits.total.value > from);
+        return counters;
     }
 
     private static String checkKeysSize(AnakonCoordsSearchResult.AnakonItems.Item.ItemData item) {
@@ -485,5 +497,11 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
         public List<String> getErrors() {
             return errors;
         }
+    }
+
+    private static class Counters {
+        public int total = 0;
+        public int processed = 0;
+        public int errors = 0;
     }
 }
