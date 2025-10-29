@@ -8,14 +8,10 @@ executor_config:
 
 processes:
   - type: marc_coordinates_consistency_check
-    jar_name: anakon-dtd-executor-1.7.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    jar_name: anakon-dtd-executor-1.7.0-coords.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.CoordinatesControlProcess
     description: Process for checking fields related to coordinates.
     inputs:
-      - name: anakon_base_url
-        type: string
-        description: Base url
-        example: "https://anakon.test.api.trinera.cloud/api/v3/search"
       - name: dig_lib_base_code
         type: enum
         options: [ MZK01, MZK03 ]
@@ -139,3 +135,6 @@ processes:
     description: Test process showing usage of a configuration file.
     inputs:
     outputs:
+
+
+
