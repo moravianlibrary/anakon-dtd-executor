@@ -44,7 +44,6 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
     }
 
     public static class Params {
-        public String anakon_base_url;
         public BaseCode dig_lib_base_code;
     }
 
@@ -91,15 +90,17 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
         }
     }
 
+    /**
+     * For local testing
+     */
     public static void main(String[] args) throws Exception {
         UUID uuid = UUID.randomUUID();
         System.out.println("Running " + MarcCoordinatesConstencyCheckProcess.class.getName() + " with UUID: " + uuid);
-        File jobDir = new File("src/main/resources/local/coordinates_control/" + uuid);
+        File jobDir = new File("src/main/resources/local/jobs-data/marc_coordinates_consistency_check/" + uuid);
         jobDir.mkdirs();
-        String anakonBaseUrl = "https://anakon.test.api.trinera.cloud/api/v3/search";
+        File configFile = new File("src/main/resources/local/process_config/marc_coordinates_consistency_check.config");
         String dig_lib_code = "MZK01";
         JSONObject input = new JSONObject();
-        input.put("anakon_base_url", anakonBaseUrl);
         input.put("dig_lib_base_code", dig_lib_code);
         new MarcCoordinatesConstencyCheckProcess().run(
                 UUID.randomUUID(),
@@ -107,7 +108,7 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
                 input.toString(),
                 new File(jobDir, "process.log"),
                 jobDir,
-                null,
+                configFile,
                 new AtomicBoolean(false)
         );
     }
@@ -148,21 +149,27 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
 
     private Properties loadConfig(BufferedWriter logWriter, File configFile) throws IOException {
         if (configFile == null || !configFile.exists()) {
-            throw new IllegalArgumentException("No configuration file provided\n");
+            throw new IllegalArgumentException("No configuration file provided");
         }
 
         logWriter.write("Loading config file: " + configFile.getAbsolutePath() + "\n");
         Properties properties = new Properties();
         properties.load(Files.newInputStream(configFile.toPath()));
 
-        if (!properties.containsKey("username") || !properties.containsKey("password")) {
-            throw new IllegalArgumentException("Missing username or password in config file\n");
+        if (!properties.containsKey("anakon_base_url")) {
+            throw new IllegalArgumentException("Missing property 'anakon_base_url' in configuration file");
+        }
+        if (!properties.containsKey("anakon_username")) {
+            throw new IllegalArgumentException("Missing property 'anakon_username' in configuration file");
+        }
+        if (!properties.containsKey("anakon_password")) {
+            throw new IllegalArgumentException("Missing property 'anakon_password' in configuration file");
         }
 
         logWriter.write("Configuration properties:\n");
         for (String key : properties.stringPropertyNames()) {
             String value = properties.getProperty(key);
-            if (key.equals("password")) {
+            if (key.equals("anakon_password")) {
                 logWriter.write(key + "=" + "*".repeat(value.length()) + "\n");
             } else {
                 logWriter.write(key + "=" + value + "\n");
@@ -182,7 +189,7 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
 
         do {
             String body = "{\"size\":" + size + ",\"track_total_hits\":true,\"from\":" + from + ",\"query\":{\"bool\":{\"must\":[" + String.join(",", filters) + "]}}}";
-            result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body, config);
+            result = postAnakonSearchRequest(httpClient, AnakonCoordsSearchResult.class, body, config);
             log.write("Processing: " + from + "-" + (from + size - 1) + "/" + result.hits.total.value + "\n");
 
             for (AnakonCoordsSearchResult.AnakonItems.Item item : result.hits.hits) {
@@ -370,18 +377,18 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
     private Params parseInput(String inputData) throws JsonProcessingException {
         //load configuration
         Params params = objectMapper.readValue(inputData, Params.class);
-
-        if (params.anakon_base_url == null) {
+        //check here for required parameters, if there are any
+        /*if (params.anakon_base_url == null) {
             throw new IllegalArgumentException("Missing required parameter: anakon_base_url");
-        }
-
+        }*/
         return params;
     }
 
-    private static <T> T postRequest(HttpClient httpClient, Class<T> resultClass, URI uri, String body, Properties config) throws IOException, InterruptedException {
-        String authHeader = httpBasicAuth(config.getProperty("username"), config.getProperty("password"));
+    private static <T> T postAnakonSearchRequest(HttpClient httpClient, Class<T> resultClass, String body, Properties config) throws IOException, InterruptedException {
+        String anakonSearchUrl = config.getProperty("anakon_base_url") + "/search";
+        String authHeader = httpBasicAuth(config.getProperty("anakon_username"), config.getProperty("anakon_password"));
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(uri)
+                .uri(URI.create(anakonSearchUrl))
                 .header("Authorization", authHeader)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body))
@@ -389,7 +396,7 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
 
         HttpResponse<String> rawResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (rawResponse.statusCode() != 200) {
-            throw new RuntimeException("Unexpected response code " + rawResponse.statusCode() + " from " + uri + " with body " + rawResponse.body());
+            throw new RuntimeException("Unexpected response code " + rawResponse.statusCode() + " from " + anakonSearchUrl + " with body " + rawResponse.body());
         }
 
         return objectMapper.readValue(rawResponse.body(), resultClass);
