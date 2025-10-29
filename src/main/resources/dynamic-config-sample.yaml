@@ -7,6 +7,23 @@ executor_config:
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
 
 processes:
+  - type: marc_coordinates_consistency_check
+    jar_name: anakon-dtd-executor-1.7.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.CoordinatesControlProcess
+    description: Process for checking fields related to coordinates.
+    inputs:
+      - name: anakon_base_url
+        type: string
+        description: Base url
+        example: "https://anakon.test.api.trinera.cloud/api/v3/search"
+      - name: dig_lib_base_code
+        type: enum
+        options: [ MZK01, MZK03 ]
+        description: Base to filter by
+    outputs:
+      - file: export.csv
+        mime_type: text/csv
+
   - type: test
     jar_name: anakon-dtd-executor-1.7.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestProcess
@@ -21,23 +38,6 @@ processes:
         options: [ can, will ]
         description: If set to "can", the process may or may not fail. If set to "will", the process will always fail unless it was cancelled before being able to fail.
     outputs:
-
-  - type: coordinates_control
-    jar_name: anakon-dtd-executor-1.7.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
-    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.CoordinatesControlProcess
-    description: Process for checking fields related to coordinates.
-    inputs:
-      - name: anakon_base_url
-        type: string
-        description: Base url
-        example: "https://anakon.test.api.trinera.cloud/api/v3/search"
-      - name: dig_lib_base_code
-        type: enum
-        options: [MZK01, MZK03 ]
-        description: Base to filter by
-    outputs:
-      - file: export.csv
-        mime_type: text/csv
 
   - type: test_export_csv
     jar_name: anakon-dtd-executor-1.7.0.jar

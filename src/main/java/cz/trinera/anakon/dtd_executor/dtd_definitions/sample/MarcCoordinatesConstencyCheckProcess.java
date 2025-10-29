@@ -26,7 +26,7 @@ import static java.nio.file.StandardOpenOption.APPEND;
 //mzk:MZK01:001483797
 //mzk:MZK01:nkc20203177803
 
-public class CoordinatesControlProcess implements Process {
+public class MarcCoordinatesConstencyCheckProcess implements Process {
 
     private static final int PAUSE_BETWEEN_VOLUME_REQUESTS_MS = 300;
 
@@ -93,7 +93,7 @@ public class CoordinatesControlProcess implements Process {
 
     public static void main(String[] args) throws Exception {
         UUID uuid = UUID.randomUUID();
-        System.out.println("Running " + CoordinatesControlProcess.class.getName() + " with UUID: " + uuid);
+        System.out.println("Running " + MarcCoordinatesConstencyCheckProcess.class.getName() + " with UUID: " + uuid);
         File jobDir = new File("src/main/resources/local/coordinates_control/" + uuid);
         jobDir.mkdirs();
         String anakonBaseUrl = "https://anakon.test.api.trinera.cloud/api/v3/search";
@@ -101,7 +101,7 @@ public class CoordinatesControlProcess implements Process {
         JSONObject input = new JSONObject();
         input.put("anakon_base_url", anakonBaseUrl);
         input.put("dig_lib_base_code", dig_lib_code);
-        new CoordinatesControlProcess().run(
+        new MarcCoordinatesConstencyCheckProcess().run(
                 UUID.randomUUID(),
                 "coordinates_control",
                 input.toString(),
