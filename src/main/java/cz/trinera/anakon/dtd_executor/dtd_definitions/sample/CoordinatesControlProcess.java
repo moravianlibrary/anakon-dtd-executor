@@ -50,8 +50,8 @@ public class CoordinatesControlProcess implements Process {
 
     private static final String coordinate =
             "(?<degrees>[0-9]{1,3})°" +
-            "(?<minutes>[0-9]{2})['`´]" +
-            "(?<seconds>[0-9]{2})\"";
+                    "(?<minutes>[0-9]{2})['`´]" +
+                    "(?<seconds>[0-9]{2})\"";
 
     private static final Pattern patternEN = Pattern.compile("\\s*(?<cardinal>[ENSW])\\s*" + coordinate + "\\s*");
     private static final Pattern patternCZ = Pattern.compile("\\s*" + coordinate + "\\s*(?<cardinal>v\\.d\\.|s\\.š\\.|j\\.š\\.|z\\.d\\.)\\s*");
@@ -185,7 +185,7 @@ public class CoordinatesControlProcess implements Process {
             result = postRequest(httpClient, AnakonCoordsSearchResult.class, URI.create(params.anakon_base_url), body, config);
             log.write("Processing: " + from + "-" + (from + size - 1) + "/" + result.hits.total.value + "\n");
 
-            for (AnakonCoordsSearchResult.AnakonItems.Item item: result.hits.hits){
+            for (AnakonCoordsSearchResult.AnakonItems.Item item : result.hits.hits) {
                 String errMessage = checkKeysSize(item._source);
                 if (errMessage != null) {
                     writeSearchResult(outputFile, log, item, errMessage, -1);
@@ -220,7 +220,7 @@ public class CoordinatesControlProcess implements Process {
         return null;
     }
 
-    private static class ItemProcessor{
+    private static class ItemProcessor {
         private final List<String> errors = new ArrayList<>();
         private Coords coords1;
         private Coords coords2;
@@ -232,7 +232,7 @@ public class CoordinatesControlProcess implements Process {
                 return true;
             }
 
-            if (!checkCoords(item, index)){
+            if (!checkCoords(item, index)) {
                 return false;
             }
 
@@ -308,12 +308,12 @@ public class CoordinatesControlProcess implements Process {
         }
 
         private void matchPartedCoord(Coords coords, String parted_coords, String part, int index) {
-            if (!Objects.equals(parted_coords, coords.toCode())){
+            if (!Objects.equals(parted_coords, coords.toCode())) {
                 errors.add("Coordinates mismatch on df_034 " + part + ": expected \"" + coords.toCode() + "\" but found \"" + parted_coords + "\"");
             }
         }
 
-        public String getErrorMessage(int index){
+        public String getErrorMessage(int index) {
             if (!errors.isEmpty()) {
                 return "Index " + index + ": " + String.join("; ", errors);
             }
@@ -449,21 +449,21 @@ public class CoordinatesControlProcess implements Process {
             List<String> latitude = List.of("N", "S");
             List<String> longitude = List.of("E", "W");
 
-            if (latitude.contains(this.cardinal) && degrees > 90){
+            if (latitude.contains(this.cardinal) && degrees > 90) {
                 errors.add("Degrees out of range: " + degrees);
             }
 
-            if (longitude.contains(this.cardinal) && degrees > 180){
+            if (longitude.contains(this.cardinal) && degrees > 180) {
                 errors.add("Degrees out of range: " + degrees);
             }
             this.degrees = degrees;
 
-            if (minutes > 59){
+            if (minutes > 59) {
                 errors.add("Minutes out of range: " + minutes);
             }
             this.minutes = minutes;
 
-            if (seconds > 59){
+            if (seconds > 59) {
                 errors.add("Seconds out of range: " + seconds);
             }
             this.seconds = seconds;
