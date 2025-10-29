@@ -351,37 +351,64 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
         return filters;
     }
 
-    private void writeSearchResult(File outputFile, BufferedWriter log, AnakonCoordsSearchResult.AnakonItems.Item item, String typeOfError, int index) throws IOException {
+    private void writeSearchResult(File outputFile, BufferedWriter log, AnakonCoordsSearchResult.AnakonItems.Item item, String errorMessage, int index) throws IOException {
         var missing_coords = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Coords();
         var missing_partial = new AnakonCoordsSearchResult.AnakonItems.Item.ItemData.Parted_coords();
 
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath(), APPEND)) {
+            //TODO: uklidit, nepřehledné
             if (index == -1) {
                 csvWriter.write("\"" + item._source.id + "\",\"" +
-                        (item._source.df_255 == null ? null : item._source.df_255.stream().findFirst().orElse(missing_coords).c) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).d) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).e) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).f) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).g) + "\",\"" +
-                        typeOfError + "\"" + "\n");
+                        escapeCsvUnsafeChars((item._source.df_255 == null ? null : item._source.df_255.stream().findFirst().orElse(missing_coords).c)) //cele souradnice
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).d))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).e))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).f))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.stream().findFirst().orElse(missing_partial).g))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars(errorMessage)
+                        + "\"" + "\n");
 
             } else {
                 csvWriter.write("\"" + item._source.id + "\",\"" +
-                        (item._source.df_255 == null ? null : item._source.df_255.get(index).c) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.get(index).d) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.get(index).e) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.get(index).f) + "\",\"" +
-                        (item._source.df_034 == null ? null : item._source.df_034.get(index).g) + "\",\"" +
-                        typeOfError + "\"" + "\n");
+                        escapeCsvUnsafeChars((item._source.df_255 == null ? null : item._source.df_255.get(index).c))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.get(index).d))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.get(index).e))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.get(index).f))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars((item._source.df_034 == null ? null : item._source.df_034.get(index).g))
+                        + "\",\"" +
+                        escapeCsvUnsafeChars(errorMessage)
+                        + "\"" + "\n");
             }
 
             csvWriter.flush();
         }
     }
 
+    private String escapeCsvUnsafeChars(String s) {
+        if (s == null) {
+            return null;
+        }
+        return s.replaceAll("\"", "\"\"").replaceAll(",", ";");
+    }
+
     private void writeCsvHeader(File outputFile) throws IOException {
         try (BufferedWriter csvWriter = Files.newBufferedWriter(outputFile.toPath())) {
-            csvWriter.write("\"ID\",\"COORDINATES\",\"D\",\"E\",\"F\",\"G\",\"ERROR\"\n");
+            //počet řádků zde musí sedět na počet sloupců v writeSearchResult
+            csvWriter.write("\"ID záznamu (instituce:aleph_báze:pole_001)\"");
+            csvWriter.write(",\"Rozsah zeměpisných délek a šířek (255.c)\"");
+            csvWriter.write(",\"Zeměpisná délka: nejzápadnější bod (034.d)\""); //MOST_WESTERN_LONGITUDE
+            csvWriter.write(",\"Zeměpisná délka: nejvýchodnější bod(034.e)\""); //MOST_EASTERN_LONGITUDE
+            csvWriter.write(",\"Zeměpisná šířka: nejsevernější bod (034.f)\""); //MOST_NORTHERN_LATITUDE
+            csvWriter.write(",\"Zeměpisná šířka: nejjižnější bod (034.g)\""); //MOST_SOUTHERN_LATITUDE
+            csvWriter.write(",\"Chybové hlášky\"\n");
             csvWriter.flush();
         }
     }
