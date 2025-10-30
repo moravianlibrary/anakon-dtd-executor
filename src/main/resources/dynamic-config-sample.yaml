@@ -25,7 +25,7 @@ processes:
     jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.real.DetectVolumesWithLowIssueCountProcess
     description: |
-      Process for detecting volumes with low issue count in a given timeframe. 
+      Process for detecting volumes with low issue count in a given timeframe.
       Typically used for searching for volumes that are empty or missing issues.
     inputs:
       - name: kramerius_base_url
@@ -42,10 +42,10 @@ processes:
         example: mzk
         description: Code of the digital library.
       - name: year_start
-        type: date
+        type: integer
         example: 2023
       - name: year_end
-        type: date
+        type: integer
         example: 2025
     outputs:
       - file: export.csv
