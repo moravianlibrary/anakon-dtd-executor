@@ -1,14 +1,15 @@
 executor_config:
-  min_supported_executor_version: 4 # Minimal version of the executor that should be allowed to continue running.
+  # Minimal version of the executor that should be allowed to continue running.
   # Each executor with lower versions will finish running current processes and not schedule any new ones.
   # And it will finish its main loop after the last process finishes.
+  min_supported_executor_version: 5
   max_concurrent_processes: 10 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
 
 processes:
   - type: marc_coordinates_consistency_check
-    jar_name: anakon-dtd-executor-1.7.0-coords.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.MarcCoordinatesConsistencyCheckProcess
     description: Process for checking fields related to coordinates.
     inputs:
@@ -16,37 +17,6 @@ processes:
         type: enum
         options: [ MZK01, MZK03 ]
         description: Base to filter by
-    outputs:
-      - file: export.csv
-        mime_type: text/csv
-
-  - type: test
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
-    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestProcess
-    description: Process for testing process execution and input/output handling.
-    inputs:
-      - name: max_duration
-        type: integer
-        description: Maximum duration in seconds for the process to run. If not set runs indefinitely or until cancelled.
-        example: 60
-      - name: failure_strategy
-        type: enum
-        options: [ can, will ]
-        description: If set to "can", the process may or may not fail. If set to "will", the process will always fail unless it was cancelled before being able to fail.
-    outputs:
-
-  - type: test_export_csv
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
-    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestExportCsv
-    description: Test process without any specific functionality, just to illustrate data types and outputs.
-    inputs:
-      - name: start_date
-        type: date
-        example: 2023-01-01
-      - name: end_date
-        type: date
-      - name: include_headers
-        type: boolean
     outputs:
       - file: export.csv
         mime_type: text/csv
@@ -77,13 +47,43 @@ processes:
       - name: year_end
         type: date
         example: 2025
+    outputs:
+      - file: export.csv
+        mime_type: text/csv
 
+  - type: test
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestProcess
+    description: Process for testing process execution and input/output handling.
+    inputs:
+      - name: max_duration
+        type: integer
+        description: Maximum duration in seconds for the process to run. If not set runs indefinitely or until cancelled.
+        example: 60
+      - name: failure_strategy
+        type: enum
+        options: [ can, will ]
+        description: If set to "can", the process may or may not fail. If set to "will", the process will always fail unless it was cancelled before being able to fail.
+    outputs:
+
+  - type: test_export_csv
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestExportCsv
+    description: Test process without any specific functionality, just to illustrate data types and outputs.
+    inputs:
+      - name: start_date
+        type: date
+        example: 2023-01-01
+      - name: end_date
+        type: date
+      - name: include_headers
+        type: boolean
     outputs:
       - file: export.csv
         mime_type: text/csv
 
   - type: test_generate_report_json
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestGenerateReportJsonProcess
     description: Generates a report about a periodical/monograph/etc JSON format based on the provided object PID in Kramerius.
     inputs:
@@ -102,7 +102,7 @@ processes:
         mime_type: application/json
 
   - type: test_aggregate_metrics
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestAggregateMetricsProcess
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -119,7 +119,7 @@ processes:
         mime_type: application/json
 
   - type: test_empty_inputs
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty inputs, will only print its parameters.
     inputs:
@@ -128,7 +128,7 @@ processes:
         mime_type: text/plain
 
   - type: test_empty_outputs
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty outputs, will only print its parameters.
     inputs:
@@ -138,28 +138,28 @@ processes:
     outputs:
 
   - type: test_empty_inputs_outputs
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty inputs and outputs, will only print its parameters.
     inputs:
     outputs:
 
   - type: test_wrong_contract_missing_method_run
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.MissingMethodRunProcess
     description: Test process with wrong contract - missing method 'run'.
     inputs:
     outputs:
 
   - type: test_wrong_contract_wrong_method_run
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.WrongMethodRunProcess
     description: Test process with wrong contract - wrong method 'run' signature.
     inputs:
     outputs:
 
   - type: test_configuration_file
-    jar_name: anakon-dtd-sample-processes-1.9.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.1.jar
     # configuration file does not have to be declared here
     # if file TYPE.config exists (in this case test_configuration_file.config) in the same folder as JARs, it will be passed to the process
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestConfigurationFile
