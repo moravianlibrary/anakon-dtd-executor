@@ -7,6 +7,19 @@ executor_config:
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
 
 processes:
+  - type: marc_coordinates_consistency_check
+    jar_name: anakon-dtd-executor-1.7.0-coords.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.MarcCoordinatesConsistencyCheckProcess
+    description: Process for checking fields related to coordinates.
+    inputs:
+      - name: dig_lib_base_code
+        type: enum
+        options: [ MZK01, MZK03 ]
+        description: Base to filter by
+    outputs:
+      - file: export.csv
+        mime_type: text/csv
+
   - type: test
     jar_name: anakon-dtd-sample-processes-1.9.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestProcess
@@ -153,3 +166,6 @@ processes:
     description: Test process showing usage of a configuration file.
     inputs:
     outputs:
+
+
+
