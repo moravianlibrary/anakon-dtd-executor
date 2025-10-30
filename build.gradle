@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'cz.trinera.anakon'
-version = '1.7.0'
+version = '1.9.0'
 
 repositories {
     mavenCentral()
@@ -24,6 +24,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.2'
     //json
     implementation 'org.json:json:20220924'
+    //jackson-datatype-jsr310
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.0")
     //http client
     implementation("org.apache.httpcomponents:httpclient:4.5.13")
 }
@@ -36,19 +38,71 @@ application {
     mainClass = 'cz.trinera.anakon.dtd_executor.Main'
 }
 
+sourceSets {
+    main {
+        resources { exclude 'local/**' }
+        java { exclude 'cz/trinera/anakon/dtd_executor/dtd_definitions/sample/**' }
+    }
+    dtd_definitions {
+        java {
+            // použij stejné zdroje, ale vyber jen sample balíček
+            srcDir 'src/main/java'
+            include 'cz/trinera/anakon/dtd_executor/dtd_definitions/**'
+        }
+        compileClasspath += sourceSets.main.output + configurations.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+//Packs the sample processes into a separate jar
+tasks.register('sampleProcessesJar', Jar) {
+    archiveBaseName = 'anakon-dtd-sample-processes'
+
+    from sourceSets.dtd_definitions.output
+
+    // include all jars from dependencies
+    from({
+        configurations.runtimeClasspath
+                .filter { it.name.endsWith('.jar') }
+                .collect { zipTree(it) }
+    })
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    manifest {
+        attributes(
+                'Main-Class': 'cz.trinera.anakon.dtd_executor.dtd_definitions.sample.Main'
+        )
+    }
+}
+
+tasks.named('processResources') {
+    exclude 'local/**'
+}
+
+//Creates the jar file without including sample processes
 jar {
+    archiveBaseName = 'anakon-dtd-executor'
+
     manifest {
         attributes(
                 'Main-Class': application.mainClass
         )
     }
+
+    from(sourceSets.main.output.classesDirs) {
+        exclude 'cz/trinera/anakon/dtd_executor/dtd_definitions/sample/**'
+    }
+
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    // Exclude test resources
-    exclude('local/**') //src/main/resources/local/** is excluded
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+build {
+    dependsOn sampleProcessesJar
 }
 
 /*

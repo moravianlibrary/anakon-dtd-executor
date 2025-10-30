@@ -1,7 +1,7 @@
 executor_config:
-  min_supported_executor_version: 6 # Minimal version of the executor that should be allowed to continue running.
-                                    # Each executor with lower versions will finish running current processes and not schedule any new ones.
-                                    # And it will finish its main loop after the last process finishes.
+  min_supported_executor_version: 4 # Minimal version of the executor that should be allowed to continue running.
+  # Each executor with lower versions will finish running current processes and not schedule any new ones.
+  # And it will finish its main loop after the last process finishes.
   max_concurrent_processes: 10 # Maximum number of processes that can run concurrently on this executor.
   polling_interval: 5 # Interval in seconds at which the executor will check for new processes to run.
   log_level: info # The logging level for the executor. Can be one of: debug, info, warning, error, critical.
@@ -21,7 +21,7 @@ processes:
         mime_type: text/csv
 
   - type: test
-    jar_name: anakon-dtd-executor-1.7.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestProcess
     description: Process for testing process execution and input/output handling.
     inputs:
@@ -36,7 +36,7 @@ processes:
     outputs:
 
   - type: test_export_csv
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestExportCsv
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -51,8 +51,39 @@ processes:
       - file: export.csv
         mime_type: text/csv
 
+  - type: detect-volumes-with-low-issue-count
+    jar_name: anakon-dtd-executor-1.8.0.jar
+    class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.DetectVolumesWithLowIssueCountProcess
+    description: |
+      Process for detecting volumes with low issue count in a given timeframe. 
+      Typically used for searching for volumes that are empty or missing issues.
+    inputs:
+      - name: kramerius_base_url
+        type: string
+        mandatory: true
+        example: https://api.kramerius.mzk.cz/search/api/client/v7.0/search
+      - name: max_issue_count
+        type: integer
+        mandatory: true
+        description: Maximal number of issues a volume must have to be considered low issue count.
+      - name: dig_lib_code
+        type: string
+        mandatory: true
+        example: mzk
+        description: Code of the digital library.
+      - name: year_start
+        type: date
+        example: 2023
+      - name: year_end
+        type: date
+        example: 2025
+
+    outputs:
+      - file: export.csv
+        mime_type: text/csv
+
   - type: test_generate_report_json
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestGenerateReportJsonProcess
     description: Generates a report about a periodical/monograph/etc JSON format based on the provided object PID in Kramerius.
     inputs:
@@ -71,7 +102,7 @@ processes:
         mime_type: application/json
 
   - type: test_aggregate_metrics
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestAggregateMetricsProcess
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -88,7 +119,7 @@ processes:
         mime_type: application/json
 
   - type: test_empty_inputs
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty inputs, will only print its parameters.
     inputs:
@@ -97,7 +128,7 @@ processes:
         mime_type: text/plain
 
   - type: test_empty_outputs
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty outputs, will only print its parameters.
     inputs:
@@ -107,28 +138,28 @@ processes:
     outputs:
 
   - type: test_empty_inputs_outputs
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.PrintoutParamsProcess
     description: Test process with empty inputs and outputs, will only print its parameters.
     inputs:
     outputs:
 
   - type: test_wrong_contract_missing_method_run
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.MissingMethodRunProcess
     description: Test process with wrong contract - missing method 'run'.
     inputs:
     outputs:
 
   - type: test_wrong_contract_wrong_method_run
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.WrongMethodRunProcess
     description: Test process with wrong contract - wrong method 'run' signature.
     inputs:
     outputs:
 
   - type: test_configuration_file
-    jar_name: anakon-dtd-executor-1.7.0.jar
+    jar_name: anakon-dtd-sample-processes-1.9.0.jar
     # configuration file does not have to be declared here
     # if file TYPE.config exists (in this case test_configuration_file.config) in the same folder as JARs, it will be passed to the process
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.TestConfigurationFile
