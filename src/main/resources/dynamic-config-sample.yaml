@@ -9,7 +9,7 @@ executor_config:
 
 processes:
   - type: marc_coordinates_consistency_check
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.real.MarcCoordinatesConsistencyCheckProcess
     description: Process for checking fields related to coordinates.
     inputs:
@@ -22,7 +22,7 @@ processes:
         mime_type: text/csv
 
   - type: detect-volumes-with-low-issue-count
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.real.DetectVolumesWithLowIssueCountProcess
     description: |
       Process for detecting volumes with low issue count in a given timeframe. 
@@ -52,7 +52,7 @@ processes:
         mime_type: text/csv
 
   - type: test
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar # Optional, if not set, the executor will look for the jar file named "TYPE.jar" in this case "test.jar"
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.TestProcess
     description: Process for testing process execution and input/output handling.
     inputs:
@@ -67,7 +67,7 @@ processes:
     outputs:
 
   - type: test_export_csv
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.TestExportCsv
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -83,7 +83,7 @@ processes:
         mime_type: text/csv
 
   - type: test_generate_report_json
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.TestGenerateReportJsonProcess
     description: Generates a report about a periodical/monograph/etc JSON format based on the provided object PID in Kramerius.
     inputs:
@@ -102,7 +102,7 @@ processes:
         mime_type: application/json
 
   - type: test_aggregate_metrics
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.TestAggregateMetricsProcess
     description: Test process without any specific functionality, just to illustrate data types and outputs.
     inputs:
@@ -119,7 +119,7 @@ processes:
         mime_type: application/json
 
   - type: test_empty_inputs
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.PrintoutParamsProcess
     description: Test process with empty inputs, will only print its parameters.
     inputs:
@@ -128,7 +128,7 @@ processes:
         mime_type: text/plain
 
   - type: test_empty_outputs
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jars
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.PrintoutParamsProcess
     description: Test process with empty outputs, will only print its parameters.
     inputs:
@@ -138,28 +138,28 @@ processes:
     outputs:
 
   - type: test_empty_inputs_outputs
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.PrintoutParamsProcess
     description: Test process with empty inputs and outputs, will only print its parameters.
     inputs:
     outputs:
 
   - type: test_wrong_contract_missing_method_run
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.MissingMethodRunProcess
     description: Test process with wrong contract - missing method 'run'.
     inputs:
     outputs:
 
   - type: test_wrong_contract_wrong_method_run
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.error.WrongMethodRunProcess
     description: Test process with wrong contract - wrong method 'run' signature.
     inputs:
     outputs:
 
   - type: test_configuration_file
-    jar_name: anakon-dtd-sample-processes-1.9.2.jar
+    jar_name: anakon-dtd-sample-processes-1.9.3.jar
     # configuration file does not have to be declared here
     # if file TYPE.config exists (in this case test_configuration_file.config) in the same folder as JARs, it will be passed to the process
     class_name: cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.TestConfigurationFile

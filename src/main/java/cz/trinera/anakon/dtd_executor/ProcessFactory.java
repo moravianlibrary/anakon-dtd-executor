@@ -1,6 +1,5 @@
 package cz.trinera.anakon.dtd_executor;
 
-import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;
 import cz.trinera.anakon.dtd_executor.dtd_definitions.UndefinedProcess;
 
 import java.io.File;
@@ -33,21 +32,20 @@ public class ProcessFactory {
         if (!jarFile.exists() || !jarFile.isFile() || !jarFile.canRead()) {
             throw new RuntimeException("Jar file for process type '" + type + "' not found or not readable: " + jarFile.getAbsolutePath());
         }
+
         //load only the required jar
         URL[] jarUrls = new URL[]{jarFile.toURI().toURL()};
-
-        Class<?> cls = loadClass(jarUrls, processDefinition);
-
+        ClassAndLoader cl = loadClass(jarUrls, processDefinition);
+        Class<?> cls = cl.cls;
+        URLClassLoader loader = cl.loader;
         System.out.println("Process definition loaded: " + processDefinition.getClassName());
-
-        Method method = findRunMethod(cls);
 
         // create instance of process
         Object processImplementationInstance = cls.getDeclaredConstructor().newInstance();
+        Method method = findRunMethod(cls);
 
-        return runProcess(processImplementationInstance, method);
+        return runProcess(processImplementationInstance, method, loader);
     }
-
 
     private static URL[] lookForExistingJars(File processDefinitionDir) throws MalformedURLException {
         File[] jarFiles = processDefinitionDir.listFiles((file, name) -> name.endsWith(".jar"));
@@ -74,10 +72,28 @@ public class ProcessFactory {
         return null;
     }
 
-    private static Class<?> loadClass(URL[] jarUrls, DynamicConfig.Process process) throws IOException {
-        try (URLClassLoader loader = new URLClassLoader(jarUrls, cz.trinera.anakon.dtd_executor.dtd_definitions.Process.class.getClassLoader())) {
-            return Class.forName(process.getClassName(), true, loader);
+    static final class ClassAndLoader {
+        final Class<?> cls;
+        final URLClassLoader loader;
+
+        ClassAndLoader(Class<?> cls, URLClassLoader loader) {
+            this.cls = cls;
+            this.loader = loader;
+        }
+    }
+
+    private static ClassAndLoader loadClass(URL[] jarUrls, DynamicConfig.Process process) {
+        URLClassLoader loader = new URLClassLoader(jarUrls,
+                cz.trinera.anakon.dtd_executor.dtd_definitions.Process.class.getClassLoader()
+        );
+        try {
+            Class<?> cls = Class.forName(process.getClassName(), true, loader);
+            return new ClassAndLoader(cls, loader);
         } catch (ClassNotFoundException e) {
+            try {
+                loader.close();
+            } catch (IOException ignored) {
+            }
             throw new RuntimeException(".jar for class not found: " + process.getClassName(), e);
         }
     }
@@ -99,11 +115,12 @@ public class ProcessFactory {
         return method;
     }
 
-    private static Process runProcess(Object instance, Method method) {
-        // because Process is @FunctionalInterface we can treat the (id, type, ...) lambda as Process.run(id, type, ...)
+    private static cz.trinera.anakon.dtd_executor.dtd_definitions.Process runProcess(Object instance, Method method, URLClassLoader loader) {
         return (id, type, inputData, logFile, outputDir, configFile, cancelRequested) -> {
+            Thread t = Thread.currentThread();
+            ClassLoader prev = t.getContextClassLoader();
+            t.setContextClassLoader(loader);
             try {
-                // call run method on instance with parameters
                 method.invoke(instance, id, type, inputData, logFile, outputDir, configFile, cancelRequested);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException("Failed to invoke run on " + instance.getClass().getName(), e);
@@ -115,6 +132,12 @@ public class ProcessFactory {
                     throw (Error) cause;
                 } else {
                     throw new RuntimeException(cause);
+                }
+            } finally {
+                t.setContextClassLoader(prev);
+                try {
+                    loader.close();
+                } catch (IOException ignored) {
                 }
             }
         };
