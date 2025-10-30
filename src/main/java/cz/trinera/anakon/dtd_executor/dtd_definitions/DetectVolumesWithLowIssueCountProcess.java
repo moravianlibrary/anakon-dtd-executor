@@ -90,7 +90,7 @@ public class DetectVolumesWithLowIssueCountProcess implements Process {
 
                 logWriter.write("Exported data to " + outputFile.getName() + "\n");
 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logWriter.write("Error: " + e.getMessage() + "\n");
                 throw e;
             } finally {

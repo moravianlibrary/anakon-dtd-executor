@@ -118,7 +118,7 @@ public class MarcCoordinatesConsistencyCheckProcess implements Process {
         try (BufferedWriter logWriter = Files.newBufferedWriter(logFile.toPath())) {
             try {
                 //log parameters
-                logWriter.write("    Running " + TestGenerateReportJsonProcess.class.getName() + "...\n");
+                logWriter.write("    Running " + MarcCoordinatesConsistencyCheckProcess.class.getName() + "...\n");
                 logWriter.write("    ID: " + id + "\n");
                 logWriter.write("    Process type: " + type + "\n");
                 logWriter.write("    Input data: " + inputData + "\n");
@@ -146,7 +146,7 @@ public class MarcCoordinatesConsistencyCheckProcess implements Process {
                 logWriter.write("Error ratio:       " + String.format("%.2f %%\n", errorRatio));
 
                 logWriter.write("Exported data to " + outputFile.getName() + "\n");
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logWriter.write("Error: " + e.getMessage() + "\n");
                 throw e;
             } finally {
