@@ -26,7 +26,7 @@ import static java.nio.file.StandardOpenOption.APPEND;
 //mzk:MZK01:001483797
 //mzk:MZK01:nkc20203177803
 
-public class MarcCoordinatesConstencyCheckProcess implements Process {
+public class MarcCoordinatesConsistencyCheckProcess implements Process {
 
     private static final int PAUSE_BETWEEN_VOLUME_REQUESTS_MS = 300;
 
@@ -95,14 +95,14 @@ public class MarcCoordinatesConstencyCheckProcess implements Process {
      */
     public static void main(String[] args) throws Exception {
         UUID uuid = UUID.randomUUID();
-        System.out.println("Running " + MarcCoordinatesConstencyCheckProcess.class.getName() + " with UUID: " + uuid);
+        System.out.println("Running " + MarcCoordinatesConsistencyCheckProcess.class.getName() + " with UUID: " + uuid);
         File jobDir = new File("src/main/resources/local/jobs-data/marc_coordinates_consistency_check/" + uuid);
         jobDir.mkdirs();
         File configFile = new File("src/main/resources/local/process_config/marc_coordinates_consistency_check.config");
         String dig_lib_code = "MZK01";
         JSONObject input = new JSONObject();
         input.put("dig_lib_base_code", dig_lib_code);
-        new MarcCoordinatesConstencyCheckProcess().run(
+        new MarcCoordinatesConsistencyCheckProcess().run(
                 UUID.randomUUID(),
                 "coordinates_control",
                 input.toString(),
