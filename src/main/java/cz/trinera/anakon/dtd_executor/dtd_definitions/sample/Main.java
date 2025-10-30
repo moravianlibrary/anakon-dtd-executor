@@ -1,5 +1,7 @@
 package cz.trinera.anakon.dtd_executor.dtd_definitions.sample;
 
+import cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test.TestProcess;
+
 public class Main {
 
     public static void main(String[] args) {

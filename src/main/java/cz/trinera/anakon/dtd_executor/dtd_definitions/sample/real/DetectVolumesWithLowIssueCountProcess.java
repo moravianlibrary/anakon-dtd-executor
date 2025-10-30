@@ -1,10 +1,11 @@
-package cz.trinera.anakon.dtd_executor.dtd_definitions;
+package cz.trinera.anakon.dtd_executor.dtd_definitions.sample.real;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONObject;
 

@@ -1,4 +1,4 @@
-package cz.trinera.anakon.dtd_executor.dtd_definitions.sample;
+package cz.trinera.anakon.dtd_executor.dtd_definitions.sample.real;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
