@@ -1,4 +1,4 @@
-package cz.trinera.anakon.dtd_executor.dtd_definitions.sample;
+package cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;

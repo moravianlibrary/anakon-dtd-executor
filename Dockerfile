@@ -19,7 +19,7 @@ FROM openjdk:11-jdk-slim AS runtime
 WORKDIR /app
 
 # Copy the built jar from the build stage
-COPY --from=build /home/gradle/project/build/libs/*.jar anakon-dtd-executor.jar
+COPY --from=build /home/gradle/project/build/libs/anakon-dtd-executor-*.jar anakon-dtd-executor.jar
 
 # Copy entrypoint script
 COPY docker/entrypoint.sh /entrypoint.sh

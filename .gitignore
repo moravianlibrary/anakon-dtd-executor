@@ -46,4 +46,4 @@ bin/
 /src/main/resources/local/
 
 ### Copilot ###
-.idea/copilot*
+.idea/copilot.data.*

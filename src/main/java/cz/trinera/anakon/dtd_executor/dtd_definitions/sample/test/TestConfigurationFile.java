@@ -1,4 +1,4 @@
-package cz.trinera.anakon.dtd_executor.dtd_definitions.sample;
+package cz.trinera.anakon.dtd_executor.dtd_definitions.sample.test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;
@@ -17,7 +17,7 @@ public class TestConfigurationFile implements Process {
     @Override
     public void run(UUID id, String type, String inputData, File logFile, File outputDir, File configFile, AtomicBoolean cancelRequested) throws Exception {
         try (BufferedWriter logWriter = Files.newBufferedWriter(logFile.toPath())) {
-            logWriter.write("    Running " + PrintoutParamsProcess.class.getName() + "...\n");
+            logWriter.write("    Running " + TestConfigurationFile.class.getName() + "...\n");
             logWriter.write("    ID: " + id + "\n");
             logWriter.write("    Process type: " + type + "\n");
             logWriter.write("    Input data: " + inputData + "\n");
