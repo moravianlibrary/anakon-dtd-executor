@@ -21,7 +21,7 @@ public class ProcessFactory {
         List<DynamicConfig.Process> processDefinitions = loadProcessesFromDynamicConfig();
         DynamicConfig.Process processDefinition = findProcess(type, processDefinitions);
         if (processDefinition == null) {
-            return new UndefinedProcess(); //will still run and then fail gracefully
+            throw new RuntimeException("Definition for process '" + type + "' not found");
         }
 
         //we don't want to load all the jars in the directory and randomly pick classes from them

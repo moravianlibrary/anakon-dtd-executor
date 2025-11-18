@@ -2,6 +2,7 @@ package cz.trinera.anakon.dtd_executor;
 
 
 import cz.trinera.anakon.dtd_executor.dtd_definitions.Process;
+import cz.trinera.anakon.dtd_executor.dtd_definitions.UndefinedProcess;
 
 import java.io.File;
 import java.io.IOException;
@@ -130,7 +131,12 @@ public class ProcessExecutor {
                 } else {
                     log("Using config file: " + configFile.getAbsolutePath());
                 }
-                Process process = ProcessFactory.load(type);
+                Process process;
+                try {
+                    process = ProcessFactory.load(type);
+                } catch (Exception e) {
+                    process = new UndefinedProcess(e.getMessage());
+                }
                 process.run(id, type, params, processLogFile, jobDir.toFile(), configFile, cancelRequested);
                 if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
                     updateFinalProcessState(id, ProcessState.CANCELED);
