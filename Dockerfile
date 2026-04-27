@@ -13,7 +13,7 @@ RUN gradle clean build -x test --no-daemon --console=plain --stacktrace
 
 
 # ===== Run stage =====
-FROM openjdk:11-jdk-slim AS runtime
+FROM eclipse-temurin:11-jre-jammy AS runtime
 
 # Set working directory
 WORKDIR /app

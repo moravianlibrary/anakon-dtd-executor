@@ -34,6 +34,18 @@ To build the Docker image, use the following command:
 ```shell
 docker build -t trinera/anakon-dtd-executor .
 ```
+Possibly including version tag 'latest'
+```
+docker build -t trinera/anakon-dtd-executor:latest .
+```
+### Pushing to Dockerhub
+
+Only if you have write access to Dockerhub repository trinera/anakon-dtd-executor.
+You don't need this to run localy built Docker image.
+
+```
+docker push trinera/anakon-dtd-executor:latest
+```
 
 ### Running the Docker Container
 To run the Docker container, use the following command:
